@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace WarehouseWebApi.Controllers
+namespace SakaguraAGFWebApi.Controllers
 {
     [ApiController]
     [Route("[controller]")]

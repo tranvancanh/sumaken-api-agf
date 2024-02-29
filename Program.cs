@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc.Versioning;
 using NLog;
 using NLog.Web;
-using WarehouseWebApi.Common;
-using WarehouseWebApi.Controllers;
+using SakaguraAGFWebApi.Commons;
+using SakaguraAGFWebApi.Controllers;
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
 logger.Info("init main");

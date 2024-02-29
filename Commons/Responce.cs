@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace WarehouseWebApi.Common
+namespace SakaguraAGFWebApi.Commons
 {
     public class Responce
     {

@@ -1,23 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc.Filters;
+﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System;
-using static WarehouseWebApi.Models.CompanyModel;
-using System.Data.SqlClient;
-using WarehouseWebApi.common;
-using WarehouseWebApi.Models;
-using Dapper;
-using System.Text.Json.Serialization;
-using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Newtonsoft.Json;
-using WarehouseWebApi.Common;
-using static System.Net.WebRequestMethods;
-using System.Reflection.PortableExecutable;
-using Microsoft.AspNetCore.Http;
-using Newtonsoft.Json.Linq;
+using System.Data.SqlClient;
+using SakaguraAGFWebApi.Commons;
 
-namespace WarehouseWebApi.Controllers
+namespace SakaguraAGFWebApi.Controllers
 {
     public class Filter : IActionFilter
     {

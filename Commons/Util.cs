@@ -1,16 +1,4 @@
-﻿using Dapper;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Hosting;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Threading.Tasks;
-using WarehouseWebApi.Common;
-using WarehouseWebApi.Models;
-
-namespace WarehouseWebApi.common
+﻿namespace SakaguraAGFWebApi.Commons
 {
     public static class Util
     {

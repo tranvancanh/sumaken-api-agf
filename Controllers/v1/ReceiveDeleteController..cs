@@ -1,23 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Text.Json;
-using System.IO;
-using WarehouseWebApi.Models;
-using WarehouseWebApi.common;
 using System.Data.SqlClient;
-using System.Data;
-using Dapper;
-using WarehouseWebApi.Common;
-using static WarehouseWebApi.Models.HandyAdminCheckModel;
-using static WarehouseWebApi.Models.CompanyModel;
-using static WarehouseWebApi.Models.HandyUserModel;
-using static WarehouseWebApi.Models.ReceiveDeleteModel;
+using SakaguraAGFWebApi.Commons;
+using SakaguraAGFWebApi.Models;
+using static SakaguraAGFWebApi.Models.ReceiveDeleteModel;
 
-namespace WarehouseWebApi.Controllers
+namespace SakaguraAGFWebApi.Controllers
 {
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]

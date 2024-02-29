@@ -1,4 +1,4 @@
-namespace WarehouseWebApi
+namespace SakaguraAGFWebApi
 {
     public class WeatherForecast
     {

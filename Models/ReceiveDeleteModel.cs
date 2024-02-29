@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace WarehouseWebApi.Models
+namespace SakaguraAGFWebApi.Models
 {
     public class ReceiveDeleteModel
     {

@@ -1,4 +1,4 @@
-﻿namespace WarehouseWebApi.Models
+﻿namespace SakaguraAGFWebApi.Models
 {
     public class D_ShipmentModel
     {

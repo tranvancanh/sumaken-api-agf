@@ -1,28 +1,13 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Text.Json;
-using System.IO;
-using WarehouseWebApi.Models;
-using WarehouseWebApi.common;
-using System.Data.SqlClient;
-using System.Data;
-using Dapper;
-using System.Net;
-using System.Text.Unicode;
-using System.Text;
-using WarehouseWebApi.Common;
-//using Microsoft.AspNetCore.Http.HttpResults;
-using System.ComponentModel.Design;
-using static WarehouseWebApi.Models.ReceiveModel;
-using static WarehouseWebApi.Models.ScanCommonModel;
 using Newtonsoft.Json;
-using static WarehouseWebApi.Models.HandyReportLogModel;
+using System.Data.SqlClient;
+using SakaguraAGFWebApi.Commons;
+using SakaguraAGFWebApi.Models;
+using static SakaguraAGFWebApi.Models.HandyReportLogModel;
+using static SakaguraAGFWebApi.Models.ScanCommonModel;
 
-namespace WarehouseWebApi.Controllers
+namespace SakaguraAGFWebApi.Controllers
 {
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]

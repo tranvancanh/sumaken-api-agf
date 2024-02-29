@@ -1,16 +1,9 @@
-﻿using Dapper;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using Newtonsoft.Json;
 using System.ComponentModel.DataAnnotations;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Threading.Tasks;
-using WarehouseWebApi.common;
-using static WarehouseWebApi.Models.QrcodeModel;
-using static WarehouseWebApi.Models.ReceiveModel;
+using static SakaguraAGFWebApi.Models.QrcodeModel;
+using static SakaguraAGFWebApi.Models.ReceiveModel;
 
-namespace WarehouseWebApi.Models
+namespace SakaguraAGFWebApi.Models
 {
     public class ScanCommonModel
     {

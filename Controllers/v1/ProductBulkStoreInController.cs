@@ -1,19 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Text.Json;
-using System.IO;
-using WarehouseWebApi.Models;
-using WarehouseWebApi.common;
-using System.Data.SqlClient;
-using System.Data;
-using Dapper;
-using WarehouseWebApi.Common;
+﻿using Microsoft.AspNetCore.Mvc;
+using SakaguraAGFWebApi.Commons;
+using SakaguraAGFWebApi.Models;
 
-namespace WarehouseWebApi.Controllers
+namespace SakaguraAGFWebApi.Controllers
 {
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]

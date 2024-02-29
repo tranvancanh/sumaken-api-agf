@@ -1,13 +1,4 @@
-﻿using Dapper;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Threading.Tasks;
-using WarehouseWebApi.common;
-
-namespace WarehouseWebApi.Models
+﻿namespace SakaguraAGFWebApi.Models
 {
     public class StoreInModel
     {

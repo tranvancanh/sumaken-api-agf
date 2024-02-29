@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc;
 
-namespace WarehouseWebApi.Common
+namespace SakaguraAGFWebApi.Commons
 {
     // https://tech.tanaka733.net/entry/2020/02/use-exceptions-to-modify-the-response
 

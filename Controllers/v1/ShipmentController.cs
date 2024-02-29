@@ -2,15 +2,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using System.Data.SqlClient;
-using WarehouseWebApi.common;
-using WarehouseWebApi.Common;
-using WarehouseWebApi.Models;
-using static WarehouseWebApi.Models.HandyReportLogModel;
-using static WarehouseWebApi.Models.QrcodeModel;
-using static WarehouseWebApi.Models.ReceiveModel;
-using static WarehouseWebApi.Models.ScanCommonModel;
+using SakaguraAGFWebApi.Commons;
+using SakaguraAGFWebApi.Models;
+using static SakaguraAGFWebApi.Models.HandyReportLogModel;
+using static SakaguraAGFWebApi.Models.QrcodeModel;
+using static SakaguraAGFWebApi.Models.ReceiveModel;
+using static SakaguraAGFWebApi.Models.ScanCommonModel;
 
-namespace WarehouseWebApi.Controllers
+namespace SakaguraAGFWebApi.Controllers
 {
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]

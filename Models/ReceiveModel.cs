@@ -1,15 +1,10 @@
 ﻿using Dapper;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Threading.Tasks;
-using WarehouseWebApi.common;
-using static WarehouseWebApi.Models.QrcodeModel;
-using static WarehouseWebApi.Models.ScanCommonModel;
+using SakaguraAGFWebApi.Commons;
+using static SakaguraAGFWebApi.Models.QrcodeModel;
+using static SakaguraAGFWebApi.Models.ScanCommonModel;
 
-namespace WarehouseWebApi.Models
+namespace SakaguraAGFWebApi.Models
 {
     public class ReceiveModel
     {

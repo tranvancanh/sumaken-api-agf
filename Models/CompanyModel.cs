@@ -1,14 +1,8 @@
 ﻿using Dapper;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Threading.Tasks;
-using WarehouseWebApi.common;
-using static WarehouseWebApi.Models.SettingModel;
+using SakaguraAGFWebApi.Commons;
 
-namespace WarehouseWebApi.Models
+namespace SakaguraAGFWebApi.Models
 {
     public class CompanyModel
     {
