@@ -6,7 +6,7 @@ using System.Text;
 namespace AGF_operater
 {
 
-    public partial class AGF_Operate
+    public partial class AgfOpreate
     {
         // 機能　 　　: AGF操作にかかわる関数をまとめたくらす
         // 返り値 　　:
@@ -23,7 +23,7 @@ namespace AGF_operater
         private string log_table;
         private string order_table;
 
-        public AGF_Operate()
+        public AgfOpreate()
         {
             auto_rack = tables.auto_rack_master;
             log_table = tables.log_table;

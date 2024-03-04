@@ -7,7 +7,7 @@ namespace SakaguraAGFWebApi.Controllers
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
-    public class AGFShipmentController : ControllerBase
+    public class ShipmentAgfController : ControllerBase
     {
         // GET: api/<AGFShipmentController>
         [HttpGet]
