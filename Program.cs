@@ -37,7 +37,7 @@ try
     builder.Host.UseNLog();
 
     //other classes that need the logger 
-    builder.Services.AddTransient<ShipmentController>();
+    //builder.Services.AddTransient<ShipmentController>();
 
     var app = builder.Build();
 
