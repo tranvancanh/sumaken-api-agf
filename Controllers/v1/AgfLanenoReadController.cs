@@ -7,7 +7,7 @@ namespace sumaken_api_agf.Controllers.v1
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
-    public class AgfLanenoRead : ControllerBase
+    public class AgfLanenoReadController : ControllerBase
     {
         // GET: api/<AgfLanenoRead>
         [HttpGet]
