@@ -1,4 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Dapper;
+using Microsoft.AspNetCore.Mvc;
+using SakaguraAGFWebApi.Commons;
+using SakaguraAGFWebApi.Models;
+using System.Data.SqlClient;
+using technoleight_THandy.Models;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -10,10 +15,49 @@ namespace sumaken_api_agf.Controllers.v1
     public class AgfKanbanReadController : ControllerBase
     {
         // GET: api/<AgfKanbanRead>
-        [HttpGet]
-        public IEnumerable<string> Get()
+        [HttpGet()]
+        [Route("AgfKanbanCheckSagyouSha/{companyID}")]
+        public async Task<IActionResult> AgfKanbanCheckSagyouSha(int companyID, int depoCode, string customerCode, string ukeire)
         {
-            return new string[] { "value1", "value2" };
+            var companys = CompanyModel.GetCompanyByCompanyID(companyID);
+            if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+            var databaseName = companys[0].DatabaseName;
+
+            var agfShukaKanbanDatas = await GetAGFShukaKanbanDatas(databaseName, depoCode, customerCode, ukeire);
+            return Ok(agfShukaKanbanDatas);
+        }
+
+        private async Task<List<AGFShukaKanbanData>> GetAGFShukaKanbanDatas(string databaseName, int depoCode, string customerCode, string ukeire)
+        {
+            var agfShukaKanbanDatas = new List<AGFShukaKanbanData>();
+            var connectionString = new GetConnectString(databaseName).ConnectionString;
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                var query = @"
+                            SELECT 
+                                A.depo_code AS DepoCode,
+                                A.customer_code AS CustomerCode,
+                                A.final_delivery_place AS Ukeire,
+                                A.truck_bin_code AS Bin,
+                                B.truck_bin_name AS SagyoSha
+                            FROM [M_AGF_DestinationBin] AS A
+                            LEFT JOIN [M_AGF_TruckBin] AS B
+                            ON A.[truck_bin_code] = B.truck_bin_code
+                            WHERE A.depo_code = @DepoCode
+                            AND A.customer_code = @CustomerCode
+                            AND A.final_delivery_place = @Ukeire
+                            AND B.truck_bin_code IS Not NULL
+                            ";
+                var param = new
+                {
+                    DepoCode = depoCode,
+                    CustomerCode = customerCode,
+                    Ukeire = ukeire
+                };
+                agfShukaKanbanDatas = (await connection.QueryAsync<AGFShukaKanbanData>(query, param)).ToList();
+            }
+            return agfShukaKanbanDatas;
         }
 
         // GET api/<AgfKanbanRead>/5

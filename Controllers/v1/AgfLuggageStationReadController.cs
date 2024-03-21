@@ -33,11 +33,36 @@ namespace sumaken_api_agf.Controllers.v1
             var companys = CompanyModel.GetCompanyByCompanyID(companyID);
             if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
             var databaseName = companys[0].DatabaseName;
-            var agfLuggageStation = await this.GetAGFLuggageStation(databaseName, depoCode);
-            var check = agfLuggageStation.Where(x => x.DepoCode == depoCode && x.LuggageStation == luggageStation).ToList();
-            if(check.Any())
+            var agfLuggageStationCheck = await this.CheckAgfLuggageStation(databaseName, depoCode, luggageStation);
+            if(agfLuggageStationCheck.Any())
                 return Ok(true);
             return NotFound("QRコードは「荷取STマスター」に存在しません。");
+        }
+
+        private async Task<List<AGFLuggageStation>> CheckAgfLuggageStation(string databaseName, int depoCode, string luggageStation)
+        {
+            var agfLuggageStation = new List<AGFLuggageStation>();
+            var connectionString = new GetConnectString(databaseName).ConnectionString;
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                var query = @"
+                            SELECT [depo_code] AS DepoCode
+                                    ,[luggage_station] AS LuggageStation
+                                    ,[change_luggage_station] AS ChangeLuggageStation
+                                FROM [M_AGF_LuggageStation]
+                            WHERE (1=1)
+                            AND [depo_code] = @DepoCode
+                            AND [luggage_station] = @LuggageStation
+                            ";
+                var param = new
+                {
+                    DepoCode = depoCode,
+                    LuggageStation = luggageStation
+                };
+                agfLuggageStation = (await connection.QueryAsync<AGFLuggageStation>(query, param)).ToList();
+            }
+            return agfLuggageStation;
         }
 
         private async Task<List<AGFLuggageStation>> GetAGFLuggageStation(string databaseName, int depoCode)

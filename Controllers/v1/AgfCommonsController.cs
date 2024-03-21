@@ -2,8 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Models;
-using sumaken_api_agf.Models;
-using System.Collections.Generic;
 using System.Data.SqlClient;
 using technoleight_THandy.Models;
 
