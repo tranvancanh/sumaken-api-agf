@@ -9,6 +9,7 @@ namespace SakaguraAGFWebApi.Controllers.v1
     [ApiController]
     public class TestController : ControllerBase
     {
+        private static Timer timer;
         // GET: api/<ValuesController>
         [HttpGet]
         public IEnumerable<string> Get()
@@ -24,11 +25,35 @@ namespace SakaguraAGFWebApi.Controllers.v1
         }
 
         // GET api/<ValuesController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
+        [HttpGet]
+        [Route("TimerCallback")]
+        public IActionResult TimerCallback()
         {
-            return "value";
+            // Create a TimerCallback delegate that points to the method you want to execute
+            TimerCallback timerCallback = new TimerCallback(DoSomething);
+
+            // Create a Timer that calls the TimerCallback delegate every 5 seconds
+            timer = timer = new Timer(timerCallback, null, 60000, Timeout.Infinite);
+
+            // Wait for user input to exit
+            Console.WriteLine("Press any key to exit...");
+
+            Console.WriteLine("Timer started. Waiting for 60 seconds...");
+
+            // Đảm bảo chương trình không kết thúc ngay lập tức
+
+            return Ok("Create a Timer that calls the TimerCallback delegate every 60 seconds");
         }
+
+        static void DoSomething(object state)
+        {
+            // Method to be executed
+            Console.WriteLine("Executing DoSomething method...");
+
+            // Dispose the timer to release resources when done
+            timer.Dispose();
+        }
+
 
         // POST api/<ValuesController>
         [HttpPost]

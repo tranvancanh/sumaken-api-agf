@@ -1,13 +1,12 @@
-﻿using System;
-
-namespace technoleight_THandy.Models
+﻿namespace technoleight_THandy.Models
 {
-    public class AGFShukaKanbanData
+    public class AGFShukaKanbanDataModel
     {
         public int DepoID { get; set; }
         public int DepoCode { get; set;}
         public int HandyUserID {  get; set; }
         public int HandyPageID { get; set; }
+        public DateTime ProcessceDate { get; set; } //処理日
 
         public string CustomerCode {  get; set; } // 得意先コード(得意先 + 工区)
         public string TokuiSakiCode { get; set; } //得意先
@@ -16,10 +15,11 @@ namespace technoleight_THandy.Models
         public string Hinban { get; set; }//品番
         public string Bin { get; set; } //便
         public DateTime Noki { get; set; } //納期
-        public string SagyoSha { get; set; } //トラック業者
+        public string SagyoShaCode { get; set; } //トラック業者コード
+        public string SagyoShaName { get; set; } //トラック業者
 
         public string ScanString1 { get; set;  }
         public string ScanString2 { get; set;  }
         public DateTime ScanTime { get; set; }
-}
+    }
 }

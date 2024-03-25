@@ -27,9 +27,9 @@ namespace sumaken_api_agf.Controllers.v1
             return Ok(agfShukaKanbanDatas);
         }
 
-        private async Task<List<AGFShukaKanbanData>> GetAGFShukaKanbanDatas(string databaseName, int depoCode, string customerCode, string ukeire)
+        private async Task<List<AGFShukaKanbanDataModel>> GetAGFShukaKanbanDatas(string databaseName, int depoCode, string customerCode, string ukeire)
         {
-            var agfShukaKanbanDatas = new List<AGFShukaKanbanData>();
+            var agfShukaKanbanDatas = new List<AGFShukaKanbanDataModel>();
             var connectionString = new GetConnectString(databaseName).ConnectionString;
             using (var connection = new SqlConnection(connectionString))
             {
@@ -40,7 +40,8 @@ namespace sumaken_api_agf.Controllers.v1
                                 A.customer_code AS CustomerCode,
                                 A.final_delivery_place AS Ukeire,
                                 A.truck_bin_code AS Bin,
-                                B.truck_bin_name AS SagyoSha
+                                B.truck_bin_code AS SagyoShaCode,
+                                B.truck_bin_name AS SagyoShaName
                             FROM [M_AGF_DestinationBin] AS A
                             LEFT JOIN [M_AGF_TruckBin] AS B
                             ON A.[truck_bin_code] = B.truck_bin_code
@@ -55,7 +56,7 @@ namespace sumaken_api_agf.Controllers.v1
                     CustomerCode = customerCode,
                     Ukeire = ukeire
                 };
-                agfShukaKanbanDatas = (await connection.QueryAsync<AGFShukaKanbanData>(query, param)).ToList();
+                agfShukaKanbanDatas = (await connection.QueryAsync<AGFShukaKanbanDataModel>(query, param)).ToList();
             }
             return agfShukaKanbanDatas;
         }
