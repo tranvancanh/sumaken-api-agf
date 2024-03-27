@@ -2,7 +2,7 @@
 
 namespace technoleight_THandy.Models
 {
-    public class AGFScanRecord
+    public class AGFScanRecordModel
     {
         public int DepoID {  get; set; }
         public int HandyUserID { get; set; }

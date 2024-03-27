@@ -31,7 +31,7 @@ namespace sumaken_api_agf.Controllers.v1
         // POST api/<AgfCommonsController>
         [HttpPost()]
         [Route("ScanRecord/{companyID}")]
-        public async Task<IActionResult> ScanRecord(int companyID, [FromBody] List<AGFScanRecord> scanRecords)
+        public async Task<IActionResult> ScanRecord(int companyID, [FromBody] List<AGFScanRecordModel> scanRecords)
         {
             var companys = CompanyModel.GetCompanyByCompanyID(companyID);
             if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
@@ -40,7 +40,7 @@ namespace sumaken_api_agf.Controllers.v1
             return Ok();
         }
 
-        private async Task<int> SaveScanRecord(string databaseName, List<AGFScanRecord> scanRecords)
+        private async Task<int> SaveScanRecord(string databaseName, List<AGFScanRecordModel> scanRecords)
         {
             var affectedRows = 0;
             var connectionString = new GetConnectString(databaseName).ConnectionString;

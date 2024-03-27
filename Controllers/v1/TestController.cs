@@ -33,7 +33,7 @@ namespace SakaguraAGFWebApi.Controllers.v1
             TimerCallback timerCallback = new TimerCallback(DoSomething);
 
             // Create a Timer that calls the TimerCallback delegate every 5 seconds
-            timer = timer = new Timer(timerCallback, null, 60000, Timeout.Infinite);
+            timer = new Timer(timerCallback, null, 60000, Timeout.Infinite);
 
             // Wait for user input to exit
             Console.WriteLine("Press any key to exit...");
@@ -62,9 +62,25 @@ namespace SakaguraAGFWebApi.Controllers.v1
         }
 
         // PUT api/<ValuesController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        [HttpGet]
+        [Route("SessionId")]
+        public IActionResult SessionId()
         {
+            // Get the request ID from the HttpContext
+            var requestId = HttpContext.TraceIdentifier;
+            // Retrieve session ID
+            var sessionId = HttpContext?.Session?.Id;
+            if(sessionId != null)
+            {
+                // You can now use the requestId as needed
+                // For example, you can log it or include it in the response
+                return Ok($"Session ID: {sessionId}");
+            }
+            else
+            {
+                return Ok($"Request ID: {requestId}");
+            }
+           
         }
 
         // DELETE api/<ValuesController>/5
