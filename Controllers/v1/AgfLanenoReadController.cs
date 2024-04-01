@@ -5,7 +5,9 @@ using Newtonsoft.Json.Linq;
 using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Models;
 using sumaken_api_agf.Models;
+using System.Data;
 using System.Data.SqlClient;
+using System.Reflection.PortableExecutable;
 using System.Text.Json;
 using technoleight_THandy.Models;
 using static SakaguraAGFWebApi.Models.HandyReportLogModel;
@@ -180,8 +182,8 @@ namespace sumaken_api_agf.Controllers.v1
 
         // POST api/<AgfLanenoRead>
         [HttpPost]
-        [Route("Toroku/{companyID}")]
-        public async Task<IActionResult> Toroku(int companyID, object objApi)
+        [Route("UpdateStateAndCreateCSV/{companyID}")]
+        public async Task<IActionResult> UpdateStateAndCreateCSV(int companyID, object objApi)
         {
             if(objApi == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
@@ -211,9 +213,9 @@ namespace sumaken_api_agf.Controllers.v1
                 var result = await this.AGFStateUpdate(databaseName, depoCode, settingFlag, laneNoListAfter, shukaKanbanData, handyUserID, address1);
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500);
+                return StatusCode(500, ex.Message);
             }
 
             return Ok();
@@ -231,6 +233,10 @@ namespace sumaken_api_agf.Controllers.v1
                     try
                     {
                         var agfStates = await this.GetLaneStateData(depoCode, settingFlag, laneNos, connection, transaction);
+                        if (!agfStates.Any())
+                        {
+                            throw new Exception("出荷レーンがいっぱいの場合もエラー");
+                        }
                         AGFLaneStateModel agfLaneState = null;
                         for (var i = 0; i < agfStates.Count; i++)
                         {
@@ -331,42 +337,72 @@ namespace sumaken_api_agf.Controllers.v1
                             }
                         }
 
-                        var createTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
-                        if(agfLaneState != null)
+                        if(agfLaneState == null)
                         {
+                            throw new Exception("出荷レーンがいっぱいの場合もエラー");
+                        }
+                        var createTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                   
+                        //行先名称を存在するチェック
+                        var SQL_SELECT_DESTINATION = @$"
+                                                        SELECT A.destination
+                                                            FROM[M_AGF_Destination] AS A
+                                                            LEFT JOIN [M_AGF_DestinationBin] AS B 
+                                                            ON A.customer_code = B.customer_code AND A.final_delivery_place = B.final_delivery_place
+  
+                                                            WHERE B.[depo_code] is not null
+                                                            AND A.[customer_code] = @CustomerCode
+                                                            AND A.[final_delivery_place] = @FinalDeliveryPlace
+                                                            AND B.[depo_code] = @DepoCode
+                                                            AND B.[truck_bin_code] = @TruckBinCode
+                                                    ";
+                        var param_select_destination = new
+                        {
+                            CustomerCode = shukaKanbanData.CustomerCode,
+                            FinalDeliveryPlace = shukaKanbanData.Ukeire,
+                            DepoCode = depoCode,
+                            TruckBinCode = shukaKanbanData.SagyoShaCode
+                        };
+                        DataTable table = new DataTable();
+                        var reader = await connection.ExecuteReaderAsync(SQL_SELECT_DESTINATION, param_select_destination, transaction);
+                        table.Load(reader);
+
+                        if(table.Rows.Count > 0)
+                        {
+                            var destination = Convert.ToString(table.Rows[0]["destination"]);
                             //A_AGF_Motionテーブルに書き込みを行う
                             var SQL_AGF_Motion_Insert = @$"
-                                                      INSERT INTO [A_AGF_Motion] 
-                                                        (
-                                                            [depo_code],
-                                                            [motion_date],
-                                                            [product_code],
-                                                            [luggage_station],
-                                                            [lane_no],
-                                                            [lane_address],
-                                                            [truck_bin_name],
-                                                            [customer_code],
-                                                            [final_delivery_place],
-                                                            [destination],
-                                                            [create_date],
-                                                            [create_user_id]
-                                                        )
-                                                      VALUES 
-                                                        (
-                                                            @DepoCode,
-                                                            @MotionDate,
-                                                            @ProductCode,
-                                                            @LuggageStation,
-                                                            @LaneNo,
-                                                            @LaneAddress,
-                                                            @TruckBinName,
-                                                            @CustomerCode,
-                                                            @FinalDeliveryPlace,
-                                                            @Destination,
-                                                            @CreateDate,
-                                                            @CreateUserId
-                                                        )
-                                                     ";
+                                                    INSERT INTO [A_AGF_Motion] 
+                                                    (
+                                                        [depo_code],
+                                                        [motion_date],
+                                                        [product_code],
+                                                        [luggage_station],
+                                                        [lane_no],
+                                                        [lane_address],
+                                                        [truck_bin_name],
+                                                        [customer_code],
+                                                        [final_delivery_place],
+                                                        [destination],
+                                                        [create_date],
+                                                        [create_user_id]
+                                                    )
+                                                    VALUES 
+                                                    (
+                                                        @DepoCode,
+                                                        @MotionDate,
+                                                        @ProductCode,
+                                                        @LuggageStation,
+                                                        @LaneNo,
+                                                        @LaneAddress,
+                                                        @TruckBinName,
+                                                        @CustomerCode,
+                                                        @FinalDeliveryPlace,
+                                                        @Destination,
+                                                        @CreateDate,
+                                                        @CreateUserId
+                                                    )
+                                                    ";
                             var agf_Monitor_Param = new
                             {
                                 DepoCode = depoCode,
@@ -378,7 +414,7 @@ namespace sumaken_api_agf.Controllers.v1
                                 TruckBinName = shukaKanbanData.SagyoShaName,
                                 CustomerCode = shukaKanbanData.TokuiSakiCode,
                                 FinalDeliveryPlace = shukaKanbanData.Ukeire,
-                                Destination = "",
+                                Destination = destination,
                                 CreateDate = createTime,
                                 CreateUserId = handyUserID
                             };
@@ -386,9 +422,12 @@ namespace sumaken_api_agf.Controllers.v1
                             var insertRows = await connection.ExecuteAsync(SQL_AGF_Motion_Insert, agf_Monitor_Param, transaction);
                             affectedRows = affectedRows + insertRows;
                         }
+                        else
+                        {
+                            throw new Exception("行先名称が存在していません");
+                        }
 
                         transaction.Commit();
-                       
                     }
                     catch (Exception)
                     {
