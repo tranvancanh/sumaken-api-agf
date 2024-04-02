@@ -33,7 +33,7 @@ public partial class table_switch
             auto_rack_master = "tokoname_autorack_loc_master";
             domestic_stcok_master = "tokoname_domestic_stock_master";
             shootermaster = "tokoname_shooter_master";
-            order_log_table = "tokoname_ORDER_LOG";
+            order_log_table = "A_AGF_OrderLog";
             _9bux_master = "tokoname_9BUX_stock";
             EDL_EDD_master = "tokoname_EDL_EDD_stock";
             XG3_master = "tokoname_XG3_stock";
@@ -47,7 +47,7 @@ public partial class table_switch
             auto_rack_master = "tokoname_autorack_loc_master_TEST";
             domestic_stcok_master = "tokoname_domestic_stock_master_TEST";
             shootermaster = "tokoname_shooter_master_TEST";
-            order_log_table = "tokoname_ORDER_LOG_TEST";
+            order_log_table = "A_AGF_OrderLog";
             _9bux_master = "tokoname_9BUX_stock_1";
             EDL_EDD_master = "tokoname_EDL_EDD_stock_TEST";
             XG3_master = "tokoname_XG3_stock";

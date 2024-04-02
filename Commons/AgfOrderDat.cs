@@ -23,27 +23,30 @@ public partial class AGF_order_dat
         public string related_sp_key;
 
         // ■指示区分
-        public string order_type;
+        public string order_type; // = 2001
 
         // ■指示詳細
         public string order_detail;
 
         // ■荷取ST
-        public string catch_ST;
+        public string catch_ST; // 出荷取り（[change_luggage_station]）
 
         // ■荷取高さ
-        public string catch_height;
+        public string catch_height;  // default 0
 
         // ■荷降ST
-        public string release_ST;
+        public string release_ST; //[change_address]
 
         // ■荷降高さ
-        public string release_height;
+        public string release_height; // default 0
 
         // ■優先順位
         public string priority_order;
         // ■号機
         public string machine_No;
+
+        // ログID
+        public long A_AGF_Motion_control_id;
 
         // 東山仕様
         public string Part_num;

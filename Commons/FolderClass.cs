@@ -32,31 +32,31 @@ public partial class Folder_class : IDisposable
 
     private Common_Class c_class = new Common_Class();
 
-    public Folder_class()
+    public Folder_class(string path)
     {
         // Share_Foleder = GetMessage()
-        var ht = GetPath();
+        //var ht = GetPath();
 
-        Share_Foleder = Conversions.ToString(ht["path"]);
+        Share_Foleder = path;
         ORDER = Share_Foleder + @"\ORDER.csv";
         DCC_STATE = Share_Foleder + @"\DCC_STATE.csv";
         ORDER_STATE = Share_Foleder + @"\ORDER_STATE.csv";
 
-        if (c_class.share_folder_path_switch() == "外部環境")
-        {
-            user = Conversions.ToString(ht["user"]);
-            pass = Conversions.ToString(ht["pass"]);
-            PCname = Conversions.ToString(ht["PCname"]);
-            string result = ConnectSrv(Share_Foleder, user, pass);
-            // 認証ダイアログGET奴
-            // 最初にコネクションダイアログをつなぐ
-            // Dim share_folder_connecting_result As Boolean
-            // share_folder_connecting_result = ShareFolderConnection()
-            // If share_folder_connecting_result = False Then
-            // Console.Write(Now() & "接続に失敗しました。")
-            // End If
+        //if (c_class.share_folder_path_switch() == "外部環境")
+        //{
+        //    user = Conversions.ToString(ht["user"]);
+        //    pass = Conversions.ToString(ht["pass"]);
+        //    PCname = Conversions.ToString(ht["PCname"]);
+        //    string result = ConnectSrv(Share_Foleder, user, pass);
+        //    // 認証ダイアログGET奴
+        //    // 最初にコネクションダイアログをつなぐ
+        //    // Dim share_folder_connecting_result As Boolean
+        //    // share_folder_connecting_result = ShareFolderConnection()
+        //    // If share_folder_connecting_result = False Then
+        //    // Console.Write(Now() & "接続に失敗しました。")
+        //    // End If
 
-        }
+        //}
 
     }
 
@@ -78,7 +78,7 @@ public partial class Folder_class : IDisposable
         var ht = new Hashtable() { { "path", "" }, { "user", "" }, { "pass", "" }, { "PCname", "" } };
 
         // XMLファイルのパスをweb.configから取得 
-        xmlFilePath = "/MyConfig.xml";
+        xmlFilePath = "/MyConfig.xml"; // 共有フォルダ　設定 出もいです
         //xmlFilePath = System.Configuration.ConfigurationManager.AppSettings["MyConfig"];
 
         // XMLファイル読み込み 

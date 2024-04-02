@@ -1,6 +1,8 @@
-﻿using Microsoft.VisualBasic; // Install-Package Microsoft.VisualBasic
+﻿using Dapper;
+using Microsoft.VisualBasic; // Install-Package Microsoft.VisualBasic
 using Microsoft.VisualBasic.CompilerServices; // Install-Package Microsoft.VisualBasic
 using System.Data;
+using System.Data.SqlClient;
 using System.Text;
 
 namespace AGF_operater
@@ -380,12 +382,17 @@ namespace AGF_operater
         // End Sub
 
 
-
-        public void make_ORDER(AGF_order_dat.ORDER order, string priority = "0", string machine_No = "0")
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="order"></param>
+        /// <param name="priority"></param>
+        /// <param name="machine_No"></param>
+        public void make_ORDER(AGF_order_dat.ORDER order, string agf_shared_folder, SqlConnection sqlConnection, SqlTransaction sqlTransaction, string priority = "0", string machine_No = "0")
         {
             // 機能　 　　: ORDER.csvを作成
             // 返り値 　　:
-            // 引き数 　　:指示区分: order_type , 出発地 : _FROM , 到達地: _TO ,優先度: "0 ～7" ,号機: "1～?"
+            // 引き数 　　:指示区分: order_type , 出発地 : _FROM([change_luggage_station]) , 到達地: _TO([change_address]) ,優先度: "0 ～7" ,号機: "1～?"
             // 作成日 　　: 2019/10/29
             // 作成者 　　: y.sato
             // 機能説明　 : 
@@ -395,7 +402,7 @@ namespace AGF_operater
 
             // ■値を入れる
             // 更新日時
-            order.update_datetime = DateTime.Now.ToString();
+            order.update_datetime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
             // データ更新日
             order.update_date = DateTime.Now.ToString("yyyyMMdd");
             // データID (その日でユニーク）
@@ -411,7 +418,7 @@ namespace AGF_operater
             else
             {
                 // ■ユニークな値を設定する処理
-                superior_key = Get_Unique_superior_key();
+                superior_key = Get_Unique_superior_key(sqlConnection, sqlTransaction);
             }
             order.superior_key = superior_key;
 
@@ -436,7 +443,7 @@ namespace AGF_operater
             // ■搬送指示であればラックの予約フラグ更新
             if (order.order_type == "2001" | order.order_type == "1")
             {
-                Reserve_rack(order.catch_ST, order.release_ST);
+                //Reserve_rack(order.catch_ST, order.release_ST, sqlConnection, sqlTransaction); // Canh_TV コメント
             }
 
             // ■対象に荷物が入って "いない" か確認処理
@@ -453,11 +460,11 @@ namespace AGF_operater
 
             string[] arry = order.make_arry();
 
-            ORDER_writer(arry, order);
+            ORDER_writer(agf_shared_folder, arry, order, sqlConnection, sqlTransaction);
 
         }
 
-        private void ORDER_writer(string[] arry, AGF_order_dat.ORDER order)
+        private void ORDER_writer(string agf_shared_folder, string[] arry, AGF_order_dat.ORDER order, SqlConnection sqlConnection, SqlTransaction sqlTransaction)
         {
             // 機能　 　　: csvに書き込む文字配列を受け取って、共有フォルダcsvファイルに書き込み
             // 返り値 　　:
@@ -469,7 +476,7 @@ namespace AGF_operater
             // ______________________________________________________________
             string ORDER_Path;
             int file_No_order = 1;
-            using (var folder = new Folder_class())
+            using (var folder = new Folder_class(agf_shared_folder))
             {
                 ORDER_Path = folder.ORDER;
             }
@@ -506,7 +513,6 @@ namespace AGF_operater
                 {
                     if (i == arry.Length - 1)
                     {
-
                         FileSystem.PrintLine(file_No_order, arry[i]);
                     }
                     else
@@ -515,21 +521,20 @@ namespace AGF_operater
                     }
                 }
 
-                LOG_write(order);
+                LOG_write(order, sqlConnection, sqlTransaction);
             }
 
             catch (Exception ex)
             {
-
                 Console.WriteLine(ex.Message);
+                throw;
             }
             finally
             {
                 FileSystem.FileClose(file_No_order);
             }
-
-
         }
+
         private string Get_Unique_superior_key()
         {
             // 機能　 　　: ORDER.csv作成時 ユニークな上位キーを作成
@@ -619,6 +624,133 @@ namespace AGF_operater
             }
 
         }
+
+        private string Get_Unique_superior_key(SqlConnection sqlConnection, SqlTransaction sqlTransaction)
+        {
+            // 機能　 　　: ORDER.csv作成時 ユニークな上位キーを作成
+            // 返り値 　　:
+            // 引き数 　　:
+            // 作成日 　　: 2019/11/13
+            // 作成者 　　: y.sato
+            // 機能説明　 : 
+            // 注意事項　 : 
+            // ______________________________________________________________
+
+            string superior_key = "";
+
+            int length = 10;
+            string passwordChars = "0123456789"; // 上位キーに使う文字
+            string unique_evi = "";
+            while (!(unique_evi is null))
+            {
+                var sb = new StringBuilder(length);
+                var r = new Random();
+                for (int i = 0, loopTo = length - 1; i <= loopTo; i++)
+                {
+                    // 文字の位置をランダムに選択
+                    int pos = r.Next(passwordChars.Length);
+                    // 選択された位置の文字を取得
+                    char c = passwordChars[pos];
+                    // 文字列の先頭が0だったら再変換
+                    if (i == 0 & Conversions.ToString(c) == "0")
+                    {
+                        while (Conversions.ToString(c) == "0")
+                            c = passwordChars[r.Next(passwordChars.Length)];
+                    }
+                    // パスワードに追加
+                    sb.Append(c);
+                }
+                superior_key = sb.ToString();
+
+                var table = new DataTable();
+                // ORDER_LOGにアクセスして被りがないか調べる
+                string strSQL_superior = "SELECT TOP 1 superior_key FROM " + order_table + " WHERE superior_key = '" + superior_key + "'";
+                var reader = sqlConnection.ExecuteReader(strSQL_superior, null, sqlTransaction);
+                table.Load(reader);
+                if(table.Rows.Count <= 0)
+                {
+                    unique_evi = null;
+                }
+                else
+                {
+                    unique_evi = Convert.ToString(table.Rows[0]["superior_key"]);
+                }
+                //unique_evi = (string)sqlConnection.ExecuteScalar(strSQL_superior, sqlTransaction);
+
+            }
+            
+            return superior_key;
+        }
+        private void LOG_write(AGF_order_dat.ORDER order_dat, SqlConnection sqlConnection, SqlTransaction sqlTransaction)
+        {
+            // 機能 　  : 
+            // 返り値   : なし
+            // 引き数　 : なし
+            // 作成日 　: 2019/10/25
+            // 作成者   : 
+            // 機能説明 : ORDER_LOGの更新
+            // 注意事項 : 
+            // 
+            // ___________________________________________________________________________________
+
+            string strSQL_LOG_up = "INSERT INTO " + order_table + 
+                " (update_datetime,update_date,dataID,superior_key,related_sp_key,order_type,order_detail, " + "catch_ST, catch_height,release_ST,release_height,priority_order,machine_No, A_AGF_Motion_control_id, done_datetime) " +
+                "VALUES (@update_datetime,@update_date,@dataID,@superior_key,@related_sp_key,@order_type,@order_detail, " + "@catch_ST,@catch_height,@release_ST,@release_height,@priority_order,@machine_No,@A_AGF_Motion_control_id, @done_datetime) ";
+            var param = new
+            {
+                update_datetime = order_dat.update_datetime,
+                update_date = order_dat.update_date,
+                dataID = order_dat.date_ID,
+                superior_key = order_dat.superior_key,
+                related_sp_key = order_dat.related_sp_key,
+                order_type = order_dat.order_type,
+                order_detail = order_dat.order_detail,
+                catch_ST = order_dat.catch_ST,
+                catch_height = order_dat.catch_height,
+                release_ST = order_dat.release_ST,
+                release_height = order_dat.release_height,
+                priority_order = order_dat.priority_order,
+                machine_No = order_dat.machine_No,
+                A_AGF_Motion_control_id = order_dat.A_AGF_Motion_control_id,
+                done_datetime = DateTime.Now,
+
+                //part_num = order_dat.Part_num,
+                //labelID = order_dat.LabelID,
+                //quantity = order_dat.Quantity,
+            };
+            sqlConnection.Execute(strSQL_LOG_up, param, sqlTransaction);
+
+            //using (var SQLTZN = new MSSQLAccess())
+            //{
+            //    SQLTZN.ClearParam();
+
+            //    SQLTZN.SetParam("@update_datetime", SqlDbType.NVarChar, order_dat.update_datetime);
+            //    SQLTZN.SetParam("@update_date", SqlDbType.NVarChar, order_dat.update_date);
+            //    SQLTZN.SetParam("@dataID", SqlDbType.NVarChar, order_dat.date_ID);
+            //    SQLTZN.SetParam("@superior_key", SqlDbType.NVarChar, order_dat.superior_key);
+            //    SQLTZN.SetParam("@related_sp_key", SqlDbType.NVarChar, order_dat.related_sp_key);
+            //    SQLTZN.SetParam("@order_type", SqlDbType.NVarChar, order_dat.order_type);
+            //    SQLTZN.SetParam("@order_detail", SqlDbType.NVarChar, order_dat.order_detail);
+            //    SQLTZN.SetParam("@catch_ST", SqlDbType.NVarChar, order_dat.catch_ST);
+            //    SQLTZN.SetParam("@catch_height", SqlDbType.NVarChar, order_dat.catch_height);
+            //    SQLTZN.SetParam("@release_ST", SqlDbType.NVarChar, order_dat.release_ST);
+            //    SQLTZN.SetParam("@release_height", SqlDbType.NVarChar, order_dat.release_height);
+            //    SQLTZN.SetParam("@priority_order", SqlDbType.NVarChar, order_dat.priority_order);
+            //    SQLTZN.SetParam("@machine_No", SqlDbType.NVarChar, order_dat.machine_No);
+
+            //    SQLTZN.SetParam("@part_num", SqlDbType.NVarChar, order_dat.Part_num);
+            //    SQLTZN.SetParam("@labelID", SqlDbType.NVarChar, order_dat.LabelID);
+            //    SQLTZN.SetParam("@quantity", SqlDbType.NVarChar, order_dat.Quantity);
+
+            //    string strSQL_LOG_up = "INSERT INTO " + order_table + " (update_datetime,update_date,dataID,superior_key,related_sp_key,order_type,order_detail, " + "catch_ST, catch_height,release_ST,release_height,priority_order,machine_No,part_num,labelID,quantity) VALUES (@update_datetime,@update_date,@dataID,@superior_key,@related_sp_key,@order_type,@order_detail, " + "@catch_ST,@catch_height,@release_ST,@release_height,@priority_order,@machine_No,@part_num,@labelID,@quantity) ";
+
+            //    SQLTZN.InsertData(strSQL_LOG_up);
+
+            //}
+
+        }
+
+
         public string Get_TO_rack_number(string rack_type_TO)
         {
             // 機能 　  : 
@@ -658,6 +790,21 @@ namespace AGF_operater
 
             }
 
+
+        }
+        public void Reserve_rack(string rack_number_FROM, string rack_number_TO, SqlConnection sqlConnection, SqlTransaction sqlTransaction)
+        {
+            // 機能 　  : 
+            // 返り値   :
+            // 引き数　 : 使用する棚number 
+            // 作成日 　: 2019/11/13
+            // 作成者   : 佐藤　
+            // 機能説明 : 指定された棚number予約に予約フラグを立てる。
+            // 
+            // ___________________________________________________________________________________
+            
+            string strSQL_reserve = " UPDATE " + auto_rack + " SET reserved = 1  WHERE number IN ('" + rack_number_FROM + "','" + rack_number_TO + "')";
+            sqlConnection.Execute(strSQL_reserve, sqlTransaction);
 
         }
         public string Unique_data_ID()

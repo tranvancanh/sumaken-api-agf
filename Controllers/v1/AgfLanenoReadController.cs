@@ -1,18 +1,15 @@
-﻿using Dapper;
+﻿using AGF_operater;
+using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Models;
 using sumaken_api_agf.Models;
 using System.Data;
 using System.Data.SqlClient;
-using System.Reflection.PortableExecutable;
-using System.Text.Json;
+using System.IO;
 using technoleight_THandy.Models;
-using static SakaguraAGFWebApi.Models.HandyReportLogModel;
-using static SakaguraAGFWebApi.Models.QrcodeModel;
-using static SakaguraAGFWebApi.Models.ReceiveModel;
+using static AGF_order_dat;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -23,6 +20,8 @@ namespace sumaken_api_agf.Controllers.v1
     [ApiController]
     public class AgfLanenoReadController : ControllerBase
     {
+        private static readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+
         // GET: api/<AgfLanenoRead>
         [HttpGet]
         [Route("GetLaneNo/{companyID}")]
@@ -188,11 +187,13 @@ namespace sumaken_api_agf.Controllers.v1
             if(objApi == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
+            await _lock.WaitAsync(); // Acquire the lock asynchronously
             try
             {
                 var companys = CompanyModel.GetCompanyByCompanyID(companyID);
                 if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
                 var databaseName = companys[0].DatabaseName;
+                var companyCode = companys[0].CompanyCode;
 
                 var objApiStr = objApi.ToString();
                 dynamic data = JsonConvert.DeserializeObject<dynamic>(objApiStr);
@@ -210,18 +211,24 @@ namespace sumaken_api_agf.Controllers.v1
                 var laneNoListAfter = laneNoList.Where(x => string.IsNullOrWhiteSpace(x) != true).ToList();
 
                 var shukaKanbanData = JsonConvert.DeserializeObject<List<AGFShukaKanbanDataModel>>(shukaKanban).First();
-                var result = await this.AGFStateUpdate(databaseName, depoCode, settingFlag, laneNoListAfter, shukaKanbanData, handyUserID, address1);
+                var result = await this.AGFStateUpdate(databaseName, companyCode, depoCode, settingFlag, laneNoListAfter, shukaKanbanData, handyUserID, address1);
 
             }
             catch (Exception ex)
             {
                 return StatusCode(500, ex.Message);
             }
+            finally
+            {
+                //When the task is ready, release the semaphore. It is vital to ALWAYS release the semaphore when we are ready, or else we will end up with a Semaphore that is forever locked.
+                //This is why it is important to do the Release within a try...finally clause; program execution may crash or take a different path, this way you are guaranteed execution
+                _lock.Release();
+            }
 
             return Ok();
         }
 
-        private async Task<int> AGFStateUpdate(string databaseName, int depoCode, string settingFlag, List<string> laneNos, AGFShukaKanbanDataModel shukaKanbanData, string handyUserID, string luggageStation)
+        private async Task<int> AGFStateUpdate(string databaseName, string companyCode, int depoCode, string settingFlag, List<string> laneNos, AGFShukaKanbanDataModel shukaKanbanData, string handyUserID, string luggageStation)
         {
             var affectedRows = 0;
             var connectionString = new GetConnectString(databaseName).ConnectionString;
@@ -238,6 +245,7 @@ namespace sumaken_api_agf.Controllers.v1
                             throw new Exception("出荷レーンがいっぱいの場合もエラー");
                         }
                         AGFLaneStateModel agfLaneState = null;
+                        //var change_Adress = 0;
                         for (var i = 0; i < agfStates.Count; i++)
                         {
                             var item = agfStates[i];
@@ -316,7 +324,9 @@ namespace sumaken_api_agf.Controllers.v1
                                             var nextItem = agfStates[i + 1];
                                             var SQL_UPDATE2 = @$"
                                                                 UPDATE [W_AGF_LaneState]
-                                                                SET [state] = '2'
+                                                                SET [state] = '2',
+                                                                    [update_date] = @UpdateTime,
+                                                                    [update_user_id] = @UpdateUserID
                                                                 WHERE [depo_code] = @DepoCode
                                                                 AND [lane_no] = @LaneNo
                                                                 AND [lane_address] = @LaneAddress
@@ -325,7 +335,9 @@ namespace sumaken_api_agf.Controllers.v1
                                             {
                                                 DepoCode = nextItem.DepoCode,
                                                 LaneNo = nextItem.LaneNo,
-                                                LaneAddress = nextItem.LaneAddress
+                                                LaneAddress = nextItem.LaneAddress,
+                                                UpdateTime = updateTime,
+                                                UpdateUserID = handyUserID
                                             };
                                             var updateRows2 = await connection.ExecuteAsync(SQL_UPDATE2, param2, transaction);
                                             affectedRows = affectedRows + updateRows2;
@@ -363,13 +375,14 @@ namespace sumaken_api_agf.Controllers.v1
                             DepoCode = depoCode,
                             TruckBinCode = shukaKanbanData.SagyoShaCode
                         };
-                        DataTable table = new DataTable();
-                        var reader = await connection.ExecuteReaderAsync(SQL_SELECT_DESTINATION, param_select_destination, transaction);
-                        table.Load(reader);
+                        var table1 = new DataTable();
+                        var reader1 = await connection.ExecuteReaderAsync(SQL_SELECT_DESTINATION, param_select_destination, transaction);
+                        table1.Load(reader1);
 
-                        if(table.Rows.Count > 0)
+                        var A_AGF_Motion_control_id = 0L;
+                        if (table1.Rows.Count > 0)
                         {
-                            var destination = Convert.ToString(table.Rows[0]["destination"]);
+                            var destination = Convert.ToString(table1.Rows[0]["destination"]);
                             //A_AGF_Motionテーブルに書き込みを行う
                             var SQL_AGF_Motion_Insert = @$"
                                                     INSERT INTO [A_AGF_Motion] 
@@ -387,6 +400,8 @@ namespace sumaken_api_agf.Controllers.v1
                                                         [create_date],
                                                         [create_user_id]
                                                     )
+                                                   OUTPUT 
+                                                         INSERTED.A_AGF_Motion_control_id
                                                     VALUES 
                                                     (
                                                         @DepoCode,
@@ -419,13 +434,75 @@ namespace sumaken_api_agf.Controllers.v1
                                 CreateUserId = handyUserID
                             };
 
-                            var insertRows = await connection.ExecuteAsync(SQL_AGF_Motion_Insert, agf_Monitor_Param, transaction);
-                            affectedRows = affectedRows + insertRows;
+                            A_AGF_Motion_control_id = await connection.QuerySingleAsync<long>(SQL_AGF_Motion_Insert, agf_Monitor_Param, transaction);
+                            affectedRows = affectedRows + 1;
                         }
                         else
                         {
                             throw new Exception("行先名称が存在していません");
                         }
+
+                        // 変換後荷取ステーション番号の取得
+                        var sql_select_change_luggage_station = @$"
+                                                                  SELECT [depo_code],
+                                                                     [luggage_station],
+                                                                     [change_luggage_station]
+                                                                  FROM [M_AGF_LuggageStation]
+                                                                  WHERE [depo_code] = @DepoCode
+                                                                  AND [luggage_station] = @LuggageStation
+                                                                 ";
+                        var param_select_change_luggage_station = new
+                        {
+                            DepoCode = agfLaneState.DepoCode,
+                            LuggageStation = luggageStation
+                        };
+                        var table2 = new DataTable();
+                        var reader2 = await connection.ExecuteReaderAsync(sql_select_change_luggage_station, param_select_change_luggage_station, transaction);
+                        table2.Load(reader2);
+                        if (table2.Rows.Count <= 0)
+                        {
+                            throw new Exception("変換後荷取ステーション番号が存在していません");
+                        }
+                        var change_luggage_station = Convert.ToString(table2.Rows[0]["change_luggage_station"]);
+
+                        //CSVの落とし先共有フォルダを取得
+                        var select_agf_shared_folders = @$"
+                                                            SELECT [CompanyCode]
+                                                                ,[AGFApiUrl]
+                                                                ,[agf_shared_folders]
+                                                            FROM [M_AGF_WebAPIURL]
+                                                            WHERE [CompanyCode] = @CompanyCode
+                                                        ";
+                        var param_agf_shared_folders = new
+                        {
+                            CompanyCode = companyCode
+                        };
+                        var table3 = new DataTable();
+                        var reader3 = await connection.ExecuteReaderAsync(select_agf_shared_folders, param_agf_shared_folders, transaction);
+                        table3.Load(reader3);
+                        if(table3.Rows.Count <= 0)
+                        {
+                            throw new Exception("CSVの落とし先共有フォルダが存在していません");
+                        }
+                        var agf_shared_folder = Convert.ToString(table3.Rows[0]["agf_shared_folders"]);
+                        if (!Directory.Exists(agf_shared_folder))
+                        {
+                            Directory.CreateDirectory(agf_shared_folder);
+                        }
+
+                        //CSV作成
+                        //superior_key
+                        //order_type
+                        var order = new AGF_order_dat.ORDER() 
+                        {
+                            catch_ST = change_luggage_station,
+                            release_ST = agfLaneState.ChangeAddress.ToString(),
+                            order_type = "2001",
+                            superior_key = "",
+                            A_AGF_Motion_control_id = A_AGF_Motion_control_id
+                        };
+                        var agf = new AgfOpreate();
+                        agf.make_ORDER(order, agf_shared_folder, connection, transaction);
 
                         transaction.Commit();
                     }
