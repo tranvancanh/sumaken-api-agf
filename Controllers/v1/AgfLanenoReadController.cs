@@ -7,9 +7,7 @@ using SakaguraAGFWebApi.Models;
 using sumaken_api_agf.Models;
 using System.Data;
 using System.Data.SqlClient;
-using System.IO;
 using technoleight_THandy.Models;
-using static AGF_order_dat;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
