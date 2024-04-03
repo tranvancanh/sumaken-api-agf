@@ -3,6 +3,7 @@ using NLog;
 using NLog.Web;
 using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Controllers;
+using sumaken_api_agf.Controllers.v1;
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
 logger.Info("init main");
@@ -37,7 +38,7 @@ try
     builder.Host.UseNLog();
 
     //other classes that need the logger 
-    //builder.Services.AddTransient<ShipmentController>();
+    builder.Services.AddTransient<AgfLanenoReadController>();
 
     var app = builder.Build();
 

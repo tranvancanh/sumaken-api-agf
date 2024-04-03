@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Models;
+using System.Data;
 using System.Data.SqlClient;
+using System.Net;
 using technoleight_THandy.Models;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -88,6 +90,80 @@ namespace sumaken_api_agf.Controllers.v1
                 }
             }
             return affectedRows;
+        }
+
+        [HttpGet()]
+        [Route("CheckSaveCSVPath/{companyID}")]
+        public async Task<IActionResult> CheckSaveCSVPath(int companyID)
+        {
+            try
+            {
+                var companys = CompanyModel.GetCompanyByCompanyID(companyID);
+                if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+                var databaseName = companys[0].DatabaseName;
+                var companyCode = companys[0].CompanyCode;
+
+                var agf_shared_folder = string.Empty;
+                var connectionString = new GetConnectString(databaseName).ConnectionString;
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    var query = @"
+                            SELECT 
+                                [CompanyCode],
+                                [AGFApiUrl],
+                                [agf_shared_folders]
+                            FROM [M_AGF_WebAPIURL]
+                            WHERE [CompanyCode] = @CompanyCode
+                            ";
+                    var param = new
+                    {
+                        CompanyCode = companyCode
+                    };
+                    var table = new DataTable();
+                    var reader = await connection.ExecuteReaderAsync(query, param);
+                    table.Load(reader);
+                    if (table.Rows.Count <= 0)
+                    {
+                        throw new Exception("CSVの落とし先共有フォルダが存在していません");
+                    }
+                    agf_shared_folder = Convert.ToString(table.Rows[0]["agf_shared_folders"]);
+                }
+
+                // Remote folder path
+                var remoteFolderPath = agf_shared_folder;
+
+                var builder = new ConfigurationBuilder()
+                   .SetBasePath(Directory.GetCurrentDirectory())
+                   .AddJsonFile("appsettings.json", optional: false);
+                var configurationRoot = builder.Build();
+                // Username and password for accessing the remote folder
+                var configuration = configurationRoot.GetSection("agfSharedFolders");
+                var username = configuration.GetValue<string>("userName");
+                var password = configuration.GetValue<string>("passWord");
+
+                // Create a NetworkCredential object with the specified username and password
+                NetworkCredential credentials = new NetworkCredential(username, password);
+
+                // Access the remote folder using the NetworkShareAccesser class
+                using (var accesser = new NetworkShareAccesser(remoteFolderPath, credentials))
+                {
+                    // Now you can perform operations on the remote folder
+                    // For example, you can list the files in the folder
+                    string[] files = Directory.GetFiles(remoteFolderPath);
+                    //foreach (string file in files)
+                    //{
+                    //    Console.WriteLine(file);
+                    //}
+                }
+
+                return Ok(agf_shared_folder);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            
         }
     }
 }

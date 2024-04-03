@@ -5,9 +5,17 @@ using Newtonsoft.Json;
 using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Models;
 using sumaken_api_agf.Models;
+using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
+using System.Net;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using System.Security;
+using System.Security.AccessControl;
 using technoleight_THandy.Models;
+using static Folder_class;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -19,6 +27,13 @@ namespace sumaken_api_agf.Controllers.v1
     public class AgfLanenoReadController : ControllerBase
     {
         private static readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
+
+        private readonly ILogger<AgfLanenoReadController> _logger;
+        public AgfLanenoReadController(ILogger<AgfLanenoReadController> logger)
+        {
+            _logger = logger;
+            _logger.LogInformation("Nlog is started to 出荷レーン登録");
+        }
 
         // GET: api/<AgfLanenoRead>
         [HttpGet]
@@ -188,6 +203,8 @@ namespace sumaken_api_agf.Controllers.v1
             await _lock.WaitAsync(); // Acquire the lock asynchronously
             try
             {
+                var startTime = DateTime.Now;
+                _logger.LogInformation("CSV作成処理は開始");
                 var companys = CompanyModel.GetCompanyByCompanyID(companyID);
                 if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
                 var databaseName = companys[0].DatabaseName;
@@ -211,9 +228,16 @@ namespace sumaken_api_agf.Controllers.v1
                 var shukaKanbanData = JsonConvert.DeserializeObject<List<AGFShukaKanbanDataModel>>(shukaKanban).First();
                 var result = await this.AGFStateUpdate(databaseName, companyCode, depoCode, settingFlag, laneNoListAfter, shukaKanbanData, handyUserID, address1);
 
+                var endTime = DateTime.Now;
+                var elapsed = endTime - startTime;
+                var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
+                _logger.LogInformation("CSV作成処理は正常終了");
+                _logger.LogInformation("CSV作成時間は: " + completeTime);
             }
             catch (Exception ex)
             {
+                _logger.LogError("CSV作成処理は異常終了");
+                _logger.LogError("Message   ：   " + ex.Message);
                 return StatusCode(500, ex.Message);
             }
             finally
@@ -483,6 +507,7 @@ namespace sumaken_api_agf.Controllers.v1
                             throw new Exception("CSVの落とし先共有フォルダが存在していません");
                         }
                         var agf_shared_folder = Convert.ToString(table3.Rows[0]["agf_shared_folders"]);
+
                         if (!Directory.Exists(agf_shared_folder))
                         {
                             Directory.CreateDirectory(agf_shared_folder);
@@ -504,8 +529,9 @@ namespace sumaken_api_agf.Controllers.v1
 
                         transaction.Commit();
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        Debug.WriteLine(ex.Message);
                         transaction.Rollback();
                         throw;
                     }
@@ -514,7 +540,20 @@ namespace sumaken_api_agf.Controllers.v1
             return affectedRows;
         }
 
-       
+        private SecureString ConvertToSecureString(string password)
+        {
+            if (password == null)
+                throw new ArgumentNullException("password");
+
+            var securePassword = new SecureString();
+
+            foreach (char c in password)
+                securePassword.AppendChar(c);
+
+            securePassword.MakeReadOnly();
+            return securePassword;
+        }
+
         private async Task<bool> CheckExistHinban(int depoCode, string productCode, SqlConnection connection = null, SqlTransaction transaction = null)
         {
             var SQL_CHECK = @$"
@@ -538,5 +577,110 @@ namespace sumaken_api_agf.Controllers.v1
 
         // PUT api/<AgfLanenoRead>/5
        
+    }
+
+
+    public class NetworkShareAccesser : IDisposable
+    {
+        string _remoteUncName;
+        string _remoteComputerName;
+        string _userName;
+        string _password;
+
+        public NetworkShareAccesser(string remoteUncName, NetworkCredential credentials)
+        {
+            _remoteUncName = remoteUncName;
+            _remoteComputerName = remoteUncName.Substring(2).Split('\\')[0];
+            _userName = credentials.UserName;
+            _password = credentials.Password;
+
+            ConnectToRemote(_remoteUncName, _userName, _password);
+        }
+
+        public void Dispose()
+        {
+            DisconnectRemote(_remoteUncName);
+        }
+
+        void ConnectToRemote(string remoteUnc, string username, string password)
+        {
+            var netResource = new NetResource
+            {
+                Scope = ResourceScope.GlobalNetwork,
+                ResourceType = ResourceType.Disk,
+                DisplayType = ResourceDisplaytype.Share,
+                RemoteName = remoteUnc
+            };
+
+            var result = WNetAddConnection2(
+                netResource,
+                password,
+                username,
+                0);
+
+            if (result != 0)
+            {
+                throw new Win32Exception(result);
+            }
+        }
+
+        void DisconnectRemote(string remoteUnc)
+        {
+            WNetCancelConnection2(remoteUnc, 0, true);
+        }
+
+        [DllImport("mpr.dll")]
+        private static extern int WNetAddConnection2(NetResource netResource,
+            string password, string username, int flags);
+
+        [DllImport("mpr.dll")]
+        private static extern int WNetCancelConnection2(string name, int flags,
+            bool force);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public class NetResource
+    {
+        public ResourceScope Scope;
+        public ResourceType ResourceType;
+        public ResourceDisplaytype DisplayType;
+        public int Usage;
+        public string LocalName;
+        public string RemoteName;
+        public string Comment;
+        public string Provider;
+    }
+
+    public enum ResourceScope : int
+    {
+        Connected = 1,
+        GlobalNetwork,
+        Remembered,
+        Recent,
+        Context
+    };
+
+    public enum ResourceType : int
+    {
+        Any = 0,
+        Disk = 1,
+        Print = 2,
+        Reserved = 8,
+    }
+
+    public enum ResourceDisplaytype : int
+    {
+        Generic = 0x0,
+        Domain = 0x01,
+        Server = 0x02,
+        Share = 0x03,
+        File = 0x04,
+        Group = 0x05,
+        Network = 0x06,
+        Root = 0x07,
+        Shareadmin = 0x08,
+        Directory = 0x09,
+        Tree = 0x0a,
+        Ndscontainer = 0x0b
     }
 }
