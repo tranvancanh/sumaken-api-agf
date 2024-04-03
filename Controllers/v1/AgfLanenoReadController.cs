@@ -502,7 +502,7 @@ namespace sumaken_api_agf.Controllers.v1
                             A_AGF_Motion_control_id = A_AGF_Motion_control_id
                         };
                         var agf = new AgfOpreate();
-                        agf.make_ORDER(order, agf_shared_folder, connection, transaction);
+                        await agf.make_ORDER(order, agf_shared_folder, connection, transaction);
 
                         transaction.Commit();
                     }

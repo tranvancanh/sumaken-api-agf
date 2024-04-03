@@ -19,7 +19,6 @@ namespace AGF_operater
         // 注意事項　 : 
         // ______________________________________________________________
 
-        private Common_Class c = new Common_Class();
         private table_switch tables = new table_switch();
         private string auto_rack;
         private string log_table;
@@ -388,7 +387,7 @@ namespace AGF_operater
         /// <param name="order"></param>
         /// <param name="priority"></param>
         /// <param name="machine_No"></param>
-        public void make_ORDER(AGF_order_dat.ORDER order, string agf_shared_folder, SqlConnection sqlConnection, SqlTransaction sqlTransaction, string priority = "0", string machine_No = "0")
+        public async Task make_ORDER(AGF_order_dat.ORDER order, string agf_shared_folder, SqlConnection sqlConnection, SqlTransaction sqlTransaction, string priority = "0", string machine_No = "0")
         {
             // 機能　 　　: ORDER.csvを作成
             // 返り値 　　:
@@ -418,7 +417,7 @@ namespace AGF_operater
             else
             {
                 // ■ユニークな値を設定する処理
-                superior_key = Get_Unique_superior_key(sqlConnection, sqlTransaction);
+                superior_key = await Get_Unique_superior_key(sqlConnection, sqlTransaction);
             }
             order.superior_key = superior_key;
 
@@ -460,11 +459,11 @@ namespace AGF_operater
 
             string[] arry = order.make_arry();
 
-            ORDER_writer(agf_shared_folder, arry, order, sqlConnection, sqlTransaction);
+            await ORDER_writer(agf_shared_folder, arry, order, sqlConnection, sqlTransaction);
 
         }
 
-        private void ORDER_writer(string agf_shared_folder, string[] arry, AGF_order_dat.ORDER order, SqlConnection sqlConnection, SqlTransaction sqlTransaction)
+        private async Task ORDER_writer(string agf_shared_folder, string[] arry, AGF_order_dat.ORDER order, SqlConnection sqlConnection, SqlTransaction sqlTransaction)
         {
             // 機能　 　　: csvに書き込む文字配列を受け取って、共有フォルダcsvファイルに書き込み
             // 返り値 　　:
@@ -474,8 +473,7 @@ namespace AGF_operater
             // 機能説明　 : 
             // 注意事項　 : 
             // ______________________________________________________________
-            string ORDER_Path;
-            int file_No_order = 1;
+            var ORDER_Path = string.Empty;
             using (var folder = new Folder_class(agf_shared_folder))
             {
                 ORDER_Path = folder.ORDER;
@@ -484,17 +482,19 @@ namespace AGF_operater
             // ■成否確認
             try
             {
-
                 // ■指定ファイルが見つからなかった場合一定回数トライしてだめだったらエラー
-                bool file_exist = false;
                 int vali_coun = 0;
                 const int try_count = 10;
-                while (file_exist == false & vali_coun < try_count)
+                while (vali_coun <= try_count)
                 {
                     try
                     {
-                        FileSystem.FileClose(file_No_order);
-                        FileSystem.FileOpen(file_No_order, ORDER_Path, OpenMode.Append, OpenAccess.Default, OpenShare.LockReadWrite);
+                        using (var fileStream = new FileStream(ORDER_Path, FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.None))
+                        using (var sw = new StreamWriter(fileStream))
+                        {
+                            var lineText = string.Join(",", arry);
+                            await sw.WriteLineAsync(lineText);
+                        }
                         break;
                     }
                     catch
@@ -509,29 +509,13 @@ namespace AGF_operater
                     }
                 }
 
-                for (int i = 0, loopTo = arry.Length - 1; i <= loopTo; i++)
-                {
-                    if (i == arry.Length - 1)
-                    {
-                        FileSystem.PrintLine(file_No_order, arry[i]);
-                    }
-                    else
-                    {
-                        FileSystem.Print(file_No_order, Operators.AddObject(arry[i], ","));
-                    }
-                }
-
-                LOG_write(order, sqlConnection, sqlTransaction);
+                await LOG_write(order, sqlConnection, sqlTransaction);
             }
 
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
                 throw;
-            }
-            finally
-            {
-                FileSystem.FileClose(file_No_order);
             }
         }
 
@@ -625,7 +609,7 @@ namespace AGF_operater
 
         }
 
-        private string Get_Unique_superior_key(SqlConnection sqlConnection, SqlTransaction sqlTransaction)
+        private async Task<string> Get_Unique_superior_key(SqlConnection sqlConnection, SqlTransaction sqlTransaction)
         {
             // 機能　 　　: ORDER.csv作成時 ユニークな上位キーを作成
             // 返り値 　　:
@@ -665,7 +649,7 @@ namespace AGF_operater
                 var table = new DataTable();
                 // ORDER_LOGにアクセスして被りがないか調べる
                 string strSQL_superior = "SELECT TOP 1 superior_key FROM " + order_table + " WHERE superior_key = '" + superior_key + "'";
-                var reader = sqlConnection.ExecuteReader(strSQL_superior, null, sqlTransaction);
+                var reader = await sqlConnection.ExecuteReaderAsync(strSQL_superior, null, sqlTransaction);
                 table.Load(reader);
                 if(table.Rows.Count <= 0)
                 {
@@ -681,7 +665,7 @@ namespace AGF_operater
             
             return superior_key;
         }
-        private void LOG_write(AGF_order_dat.ORDER order_dat, SqlConnection sqlConnection, SqlTransaction sqlTransaction)
+        private async Task<int> LOG_write(AGF_order_dat.ORDER order_dat, SqlConnection sqlConnection, SqlTransaction sqlTransaction)
         {
             // 機能 　  : 
             // 返り値   : なし
@@ -718,7 +702,8 @@ namespace AGF_operater
                 //labelID = order_dat.LabelID,
                 //quantity = order_dat.Quantity,
             };
-            sqlConnection.Execute(strSQL_LOG_up, param, sqlTransaction);
+            var result = await sqlConnection.ExecuteAsync(strSQL_LOG_up, param, sqlTransaction);
+            return result;
 
             //using (var SQLTZN = new MSSQLAccess())
             //{
