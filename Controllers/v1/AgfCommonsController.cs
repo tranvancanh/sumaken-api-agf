@@ -102,8 +102,11 @@ namespace sumaken_api_agf.Controllers.v1
         [Route("CheckSaveCSVPath/{companyID}")]
         public async Task<IActionResult> CheckSaveCSVPath(int companyID)
         {
+            var startTime = DateTime.Now;
             try
             {
+                _logger.LogInformation("AGF共有フォルダ処理は開始");
+
                 var companys = CompanyModel.GetCompanyByCompanyID(companyID);
                 if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
                 var databaseName = companys[0].DatabaseName;
@@ -114,12 +117,21 @@ namespace sumaken_api_agf.Controllers.v1
                     _logger.LogInformation(result.Mess);
                 else
                     _logger.LogError(result.Mess);
+                var endTime = DateTime.Now;
+                var elapsed = endTime - startTime;
+                var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
+                _logger.LogInformation("AGF共有フォルダ処理は正常終了");
+                _logger.LogInformation("AGF共有フォルダ時間は: " + completeTime);
                 return Ok();
             }
             catch (Exception ex)
             {
                 _logger.LogError("AGF共有フォルダはエラーが発生しました。");
                 _logger.LogError("Message   ：   " + ex.Message);
+                var endTime = DateTime.Now;
+                var elapsed = endTime - startTime;
+                var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
+                _logger.LogError("時間かかるのは: " + completeTime);
                 return StatusCode(500, ex.Message);
             }
             

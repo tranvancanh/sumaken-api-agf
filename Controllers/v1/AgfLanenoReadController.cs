@@ -198,9 +198,9 @@ namespace sumaken_api_agf.Controllers.v1
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
             await _lock.WaitAsync(); // Acquire the lock asynchronously
+            var startTime = DateTime.Now;
             try
             {
-                var startTime = DateTime.Now;
                 _logger.LogInformation("CSV作成処理は開始");
                 var companys = CompanyModel.GetCompanyByCompanyID(companyID);
                 if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
@@ -235,6 +235,10 @@ namespace sumaken_api_agf.Controllers.v1
             {
                 _logger.LogError("CSV作成処理は異常終了");
                 _logger.LogError("Message   ：   " + ex.Message);
+                var endTime = DateTime.Now;
+                var elapsed = endTime - startTime;
+                var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
+                _logger.LogError("時間かかるのは: " + completeTime);
                 return StatusCode(500, ex.Message);
             }
             finally
