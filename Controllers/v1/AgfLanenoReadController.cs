@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Models;
+using sumaken_api_agf.Commons;
 using sumaken_api_agf.Models;
 using System.Data;
 using System.Data.SqlClient;
@@ -150,6 +151,7 @@ namespace sumaken_api_agf.Controllers.v1
                             [lane_address] AS LaneAddress,
                             [change_address] ChangeAddress,
                             [sort_address] AS SortAddress,
+                            [stacking_sort_address] AS StackingSortAddress,
                             [state] AS [State]
                         FROM [W_AGF_LaneState]
                         WHERE [depo_code] = @DepoCode
@@ -168,12 +170,13 @@ namespace sumaken_api_agf.Controllers.v1
                             [lane_address] AS LaneAddress,
                             [change_address] ChangeAddress,
                             [sort_address] AS SortAddress,
+                            [stacking_sort_address] AS StackingSortAddress,
                             [state] AS [State]
                         FROM [W_AGF_LaneState]
                         WHERE [depo_code] = @DepoCode
                         AND ([lane_no] IN({strLanNo}))
                         AND [state] = '0'
-                        ORDER BY [change_address]
+                        ORDER BY [stacking_sort_address]
                         ";
             }
 
@@ -504,7 +507,11 @@ namespace sumaken_api_agf.Controllers.v1
 
                         if (!Directory.Exists(agf_shared_folder))
                         {
-                            await AgfCommonsController.CheckAccessServerOrSharedResource(databaseName, companyCode);
+                            var result = await NetworkShareAccesser.CheckAccessServerOrSharedResource(databaseName, companyCode);
+                            if (result.Level == NetworkShareAccesser.Level.Infor)
+                                _logger.LogInformation(result.Mess);
+                            else
+                                _logger.LogError(result.Mess);
                         }
 
                         //CSV作成

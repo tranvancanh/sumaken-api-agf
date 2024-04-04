@@ -7,6 +7,7 @@
         public string LaneAddress { get; set; }
         public int ChangeAddress { get; set; }
         public int SortAddress { get; set; }
+        public int StackingSortAddress { get; set; }
         public int State { get; set; }
     }
 }
