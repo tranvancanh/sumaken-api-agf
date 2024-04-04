@@ -38,6 +38,7 @@ try
     builder.Host.UseNLog();
 
     //other classes that need the logger 
+    builder.Services.AddTransient<AgfCommonsController>();
     builder.Services.AddTransient<AgfLanenoReadController>();
 
     var app = builder.Build();

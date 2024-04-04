@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Models;
+using sumaken_api_agf.Commons;
 using System.Data;
 using System.Data.SqlClient;
 using System.Net;
@@ -16,6 +17,13 @@ namespace sumaken_api_agf.Controllers.v1
     [ApiController]
     public class AgfCommonsController : ControllerBase
     {
+        private readonly ILogger<AgfCommonsController> _logger;
+        public AgfCommonsController(ILogger<AgfCommonsController> logger)
+        {
+            _logger = logger;
+            _logger.LogInformation("Nlog is started to AGF共通処理開始");
+        }
+
         // GET: api/<AgfCommonsController>
         [HttpGet]
         public IEnumerable<string> Get()
@@ -103,12 +111,27 @@ namespace sumaken_api_agf.Controllers.v1
                 var databaseName = companys[0].DatabaseName;
                 var companyCode = companys[0].CompanyCode;
 
-                var agf_shared_folder = string.Empty;
-                var connectionString = new GetConnectString(databaseName).ConnectionString;
-                using (var connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-                    var query = @"
+                var result = await CheckAccessServerOrSharedResource(databaseName, companyCode);
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("AGF共有フォルダはエラーが発生しました。");
+                _logger.LogError("Message   ：   " + ex.Message);
+                return StatusCode(500, ex.Message);
+            }
+            
+        }
+
+        public static async Task<bool> CheckAccessServerOrSharedResource(string databaseName, string companyCode)
+        {
+            var agf_shared_folder = string.Empty;
+            var connectionString = new GetConnectString(databaseName).ConnectionString;
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                var query = @"
                             SELECT 
                                 [CompanyCode],
                                 [AGFApiUrl],
@@ -116,54 +139,84 @@ namespace sumaken_api_agf.Controllers.v1
                             FROM [M_AGF_WebAPIURL]
                             WHERE [CompanyCode] = @CompanyCode
                             ";
-                    var param = new
-                    {
-                        CompanyCode = companyCode
-                    };
-                    var table = new DataTable();
-                    var reader = await connection.ExecuteReaderAsync(query, param);
-                    table.Load(reader);
-                    if (table.Rows.Count <= 0)
-                    {
-                        throw new Exception("CSVの落とし先共有フォルダが存在していません");
-                    }
-                    agf_shared_folder = Convert.ToString(table.Rows[0]["agf_shared_folders"]);
+                var param = new
+                {
+                    CompanyCode = companyCode
+                };
+                var table = new DataTable();
+                var reader = await connection.ExecuteReaderAsync(query, param);
+                table.Load(reader);
+                if (table.Rows.Count <= 0)
+                {
+                    throw new Exception("CSVの落とし先共有フォルダが存在していません");
                 }
+                agf_shared_folder = Convert.ToString(table.Rows[0]["agf_shared_folders"]);
+            }
 
-                // Remote folder path
-                var remoteFolderPath = agf_shared_folder;
+            // Remote folder path
+            var remoteFolderPath = agf_shared_folder;
 
-                var builder = new ConfigurationBuilder()
-                   .SetBasePath(Directory.GetCurrentDirectory())
-                   .AddJsonFile("appsettings.json", optional: false);
-                var configurationRoot = builder.Build();
-                // Username and password for accessing the remote folder
-                var configuration = configurationRoot.GetSection("agfSharedFolders");
-                var username = configuration.GetValue<string>("userName");
-                var password = configuration.GetValue<string>("passWord");
+            var builder = new ConfigurationBuilder()
+               .SetBasePath(Directory.GetCurrentDirectory())
+               .AddJsonFile("appsettings.json", optional: false);
+            var configurationRoot = builder.Build();
+            // Username and password for accessing the remote folder
+            var configuration = configurationRoot.GetSection("agfSharedFolders");
+            var userName = configuration.GetValue<string>("userName");
+            var passWord = configuration.GetValue<string>("passWord");
 
-                // Create a NetworkCredential object with the specified username and password
-                NetworkCredential credentials = new NetworkCredential(username, password);
+            // Create a NetworkCredential object with the specified userName and passWord
+            NetworkCredential credentials = new NetworkCredential(userName, passWord);
 
-                // Access the remote folder using the NetworkShareAccesser class
+            // Ensure the directory exists or create it if it doesn't
+            if (!Directory.Exists(remoteFolderPath))
+            {
+                // Access the remote folder using the NetworkShareAccesser class to validate credentials
                 using (var accesser = new NetworkShareAccesser(remoteFolderPath, credentials))
                 {
-                    // Now you can perform operations on the remote folder
-                    // For example, you can list the files in the folder
-                    string[] files = Directory.GetFiles(remoteFolderPath);
-                    //foreach (string file in files)
-                    //{
-                    //    Console.WriteLine(file);
-                    //}
-                }
+                    // If the connection was successful, proceed to create the directory
+                    if (accesser.Connected)
+                    {
+                        // Ensure the directory exists or create it if it doesn't
+                        if (!Directory.Exists(remoteFolderPath))
+                        {
+                            try
+                            {
+                                Directory.CreateDirectory(remoteFolderPath);
+                                Console.WriteLine("Directory created successfully.");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error creating directory: {ex.Message}");
+                                throw;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Directory already exists.");
+                        }
 
-                return Ok(agf_shared_folder);
+                        // Now you can perform operations on the remote folder
+                        // For example, you can list the files in the folder
+                        string[] files = Directory.GetFiles(remoteFolderPath);
+                        foreach (string file in files)
+                        {
+                            Console.WriteLine(file);
+                        }
+                    }
+                    if (!Directory.Exists(remoteFolderPath))
+                    {
+                        Directory.CreateDirectory(remoteFolderPath);
+                        Console.WriteLine("Directory created successfully.");
+                    }
+                }
             }
-            catch (Exception ex)
+            else
             {
-                return StatusCode(500, ex.Message);
+                Console.WriteLine("Directory already exists.");
             }
-            
+
+            return true;
         }
     }
 }
