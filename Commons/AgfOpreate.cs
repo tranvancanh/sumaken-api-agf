@@ -417,7 +417,7 @@ namespace AGF_operater
             else
             {
                 // ■ユニークな値を設定する処理
-                superior_key = await Get_Unique_superior_key(sqlConnection, sqlTransaction);
+                superior_key = await GenerateUniqueString(sqlConnection, sqlTransaction);
             }
             order.superior_key = superior_key;
 
@@ -607,6 +607,39 @@ namespace AGF_operater
 
             }
 
+        }
+        Random random = new Random();
+        private async Task<string> GenerateUniqueString(SqlConnection sqlConnection, SqlTransaction sqlTransaction)
+        {
+            var uniqueString = string.Empty;
+            // Create an array of digits from 0 to 9
+            int[] digits = Enumerable.Range(0, 10).ToArray();
+            while (true)
+            {
+                // Shuffle the array using Fisher-Yates algorithm
+                for (int i = digits.Length - 1; i > 0; i--)
+                {
+                    int j = random.Next(0, i + 1);
+                    int temp = digits[i];
+                    digits[i] = digits[j];
+                    digits[j] = temp;
+                }
+
+                // Take the first 9 digits to form the string
+                uniqueString = string.Join("", digits.Take(10));
+
+                var table = new DataTable();
+                // ORDER_LOGにアクセスして被りがないか調べる
+                string strSQL_superior = "SELECT TOP 1 superior_key FROM " + order_table + " WHERE superior_key = '" + uniqueString + "'";
+                var reader = await sqlConnection.ExecuteReaderAsync(strSQL_superior, null, sqlTransaction);
+                table.Load(reader);
+                if (table.Rows.Count <= 0)
+                {
+                    break;
+                }
+            }
+
+            return uniqueString;
         }
 
         private async Task<string> Get_Unique_superior_key(SqlConnection sqlConnection, SqlTransaction sqlTransaction)
