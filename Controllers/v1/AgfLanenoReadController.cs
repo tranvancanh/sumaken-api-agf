@@ -235,10 +235,6 @@ namespace sumaken_api_agf.Controllers.v1
             {
                 _logger.LogError("CSV作成処理は異常終了");
                 _logger.LogError("Message   ：   " + ex.Message);
-                var endTime = DateTime.Now;
-                var elapsed = endTime - startTime;
-                var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
-                _logger.LogError("時間かかるのは: " + completeTime);
                 return StatusCode(500, ex.Message);
             }
             finally
@@ -246,6 +242,10 @@ namespace sumaken_api_agf.Controllers.v1
                 //When the task is ready, release the semaphore. It is vital to ALWAYS release the semaphore when we are ready, or else we will end up with a Semaphore that is forever locked.
                 //This is why it is important to do the Release within a try...finally clause; program execution may crash or take a different path, this way you are guaranteed execution
                 _lock.Release();
+                var endTime = DateTime.Now;
+                var elapsed = endTime - startTime;
+                var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
+                _logger.LogError("時間かかるのは: " + completeTime);
             }
 
             return Ok();
@@ -517,7 +517,7 @@ namespace sumaken_api_agf.Controllers.v1
                             else
                                 _logger.LogError(result.Mess);
                         }
-
+                        
                         //CSV作成
                         //superior_key
                         //order_type

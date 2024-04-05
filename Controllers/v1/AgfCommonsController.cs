@@ -128,13 +128,16 @@ namespace sumaken_api_agf.Controllers.v1
             {
                 _logger.LogError("AGF共有フォルダはエラーが発生しました。");
                 _logger.LogError("Message   ：   " + ex.Message);
+                return StatusCode(500, ex.Message);
+            }
+            finally
+            {
                 var endTime = DateTime.Now;
                 var elapsed = endTime - startTime;
                 var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
                 _logger.LogError("時間かかるのは: " + completeTime);
-                return StatusCode(500, ex.Message);
             }
-            
+
         }
 
        

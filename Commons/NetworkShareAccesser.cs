@@ -185,19 +185,19 @@ namespace sumaken_api_agf.Commons
                             {
                                 Directory.CreateDirectory(remoteFolderPath);
                                 Debug.WriteLine("Directory created successfully.");
-                                result = new (Level.Infor, "$Directory created successfully.");
+                                result = new (Level.Infor, $"Directory created successfully.");
                             }
                             catch (Exception ex)
                             {
                                 Debug.WriteLine($"Error creating directory: {ex.Message}");
-                                result = new(Level.Error, "$Error creating directory: {ex.Message}");
+                                result = new(Level.Error, $"Error creating directory: {ex.Message}");
                                 throw;
                             }
                         }
                         else
                         {
                             Console.WriteLine("Directory already exists.");
-                            result = new(Level.Infor, "$Directory already exists.");
+                            result = new(Level.Infor, $"Directory already exists.");
                         }
 
                         // Now you can perform operations on the remote folder
