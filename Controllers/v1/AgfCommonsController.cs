@@ -135,7 +135,7 @@ namespace sumaken_api_agf.Controllers.v1
                 var endTime = DateTime.Now;
                 var elapsed = endTime - startTime;
                 var completeTime = elapsed.ToString(@"hh\:mm\:ss\.ffff");
-                _logger.LogError("時間かかるのは: " + completeTime);
+                _logger.LogInformation("時間かかるのは: " + completeTime);
             }
 
         }

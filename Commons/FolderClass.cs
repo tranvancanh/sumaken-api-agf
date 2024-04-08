@@ -1,11 +1,8 @@
-﻿
-using System;
+﻿using Microsoft.VisualBasic.CompilerServices; // Install-Package Microsoft.VisualBasic
 using System.Collections;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Xml;
-using Microsoft.VisualBasic.CompilerServices; // Install-Package Microsoft.VisualBasic
 
 public partial class Folder_class : IDisposable
 {
@@ -37,10 +34,19 @@ public partial class Folder_class : IDisposable
         // Share_Foleder = GetMessage()
         //var ht = GetPath();
 
+#if DEBUG
         Share_Foleder = path;
+        ORDER = Share_Foleder + @"\ORDER_test.csv";
+        DCC_STATE = Share_Foleder + @"\DCC_STATE_test.csv";
+        ORDER_STATE = Share_Foleder + @"\ORDER_STATE_test.csv";
+        Debug.WriteLine("This is running in debug mode!");
+#else
+    Share_Foleder = path;
         ORDER = Share_Foleder + @"\ORDER.csv";
         DCC_STATE = Share_Foleder + @"\DCC_STATE.csv";
         ORDER_STATE = Share_Foleder + @"\ORDER_STATE.csv";
+#endif
+
 
         //if (c_class.share_folder_path_switch() == "外部環境")
         //{

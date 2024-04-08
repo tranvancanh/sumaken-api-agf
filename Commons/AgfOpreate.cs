@@ -711,8 +711,8 @@ namespace AGF_operater
             // ___________________________________________________________________________________
 
             string strSQL_LOG_up = "INSERT INTO " + order_table + 
-                " (update_datetime,update_date,dataID,superior_key,related_sp_key,order_type,order_detail, " + "catch_ST, catch_height,release_ST,release_height,priority_order,machine_No, A_AGF_Motion_control_id, done_datetime) " +
-                "VALUES (@update_datetime,@update_date,@dataID,@superior_key,@related_sp_key,@order_type,@order_detail, " + "@catch_ST,@catch_height,@release_ST,@release_height,@priority_order,@machine_No,@A_AGF_Motion_control_id, @done_datetime) ";
+                " (update_datetime,update_date,dataID,superior_key,related_sp_key,order_type,order_detail, " + "catch_ST, catch_height,release_ST,release_height,priority_order,machine_No, A_AGF_Motion_control_id) " +
+                "VALUES (@update_datetime,@update_date,@dataID,@superior_key,@related_sp_key,@order_type,@order_detail, " + "@catch_ST,@catch_height,@release_ST,@release_height,@priority_order,@machine_No,@A_AGF_Motion_control_id) ";
             var param = new
             {
                 update_datetime = order_dat.update_datetime,
@@ -729,7 +729,6 @@ namespace AGF_operater
                 priority_order = order_dat.priority_order,
                 machine_No = order_dat.machine_No,
                 A_AGF_Motion_control_id = order_dat.A_AGF_Motion_control_id,
-                done_datetime = DateTime.Now,
 
                 //part_num = order_dat.Part_num,
                 //labelID = order_dat.LabelID,
