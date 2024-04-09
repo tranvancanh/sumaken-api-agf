@@ -1,9 +1,12 @@
 ﻿using Dapper;
 using Microsoft.VisualBasic; // Install-Package Microsoft.VisualBasic
 using Microsoft.VisualBasic.CompilerServices; // Install-Package Microsoft.VisualBasic
+using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Text;
+using System.Transactions;
 
 namespace AGF_operater
 {
@@ -417,7 +420,8 @@ namespace AGF_operater
             else
             {
                 // ■ユニークな値を設定する処理
-                superior_key = await GenerateUniqueString(sqlConnection, sqlTransaction);
+                //superior_key = await GenerateUniqueString(sqlConnection, sqlTransaction);
+                superior_key = "";
             }
             order.superior_key = superior_key;
 
@@ -457,13 +461,13 @@ namespace AGF_operater
             // 号機指定
             order.machine_No = machine_No;
 
-            string[] arry = order.make_arry();
+            //string[] arry = order.make_arry();
 
-            await ORDER_writer(agf_shared_folder, arry, order, sqlConnection, sqlTransaction);
+            await ORDER_writer(agf_shared_folder, order, sqlConnection, sqlTransaction);
 
         }
 
-        private async Task ORDER_writer(string agf_shared_folder, string[] arry, AGF_order_dat.ORDER order, SqlConnection sqlConnection, SqlTransaction sqlTransaction)
+        private async Task ORDER_writer(string agf_shared_folder, AGF_order_dat.ORDER order, SqlConnection sqlConnection, SqlTransaction sqlTransaction)
         {
             // 機能　 　　: csvに書き込む文字配列を受け取って、共有フォルダcsvファイルに書き込み
             // 返り値 　　:
@@ -482,6 +486,9 @@ namespace AGF_operater
             // ■成否確認
             try
             {
+                await LOG_write(order, sqlConnection, sqlTransaction);
+                string[] arry = order.make_arry();
+
                 // ■指定ファイルが見つからなかった場合一定回数トライしてだめだったらエラー
                 int vali_coun = 0;
                 const int try_count = 10;
@@ -508,13 +515,11 @@ namespace AGF_operater
                         }
                     }
                 }
-
-                await LOG_write(order, sqlConnection, sqlTransaction);
             }
 
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Debug.WriteLine(ex.Message);
                 throw;
             }
         }
@@ -710,9 +715,10 @@ namespace AGF_operater
             // 
             // ___________________________________________________________________________________
 
-            string strSQL_LOG_up = "INSERT INTO " + order_table + 
+            var strSQL_LOG_Insert = "INSERT INTO " + order_table + 
                 " (update_datetime,update_date,dataID,superior_key,related_sp_key,order_type,order_detail, " + "catch_ST, catch_height,release_ST,release_height,priority_order,machine_No, A_AGF_Motion_control_id) " +
-                "VALUES (@update_datetime,@update_date,@dataID,@superior_key,@related_sp_key,@order_type,@order_detail, " + "@catch_ST,@catch_height,@release_ST,@release_height,@priority_order,@machine_No,@A_AGF_Motion_control_id) ";
+                " OUTPUT INSERTED.controlID " +
+                " VALUES (@update_datetime,@update_date,@dataID,@superior_key,@related_sp_key,@order_type,@order_detail, " + "@catch_ST,@catch_height,@release_ST,@release_height,@priority_order,@machine_No,@A_AGF_Motion_control_id) ";
             var param = new
             {
                 update_datetime = order_dat.update_datetime,
@@ -730,41 +736,23 @@ namespace AGF_operater
                 machine_No = order_dat.machine_No,
                 A_AGF_Motion_control_id = order_dat.A_AGF_Motion_control_id,
 
-                //part_num = order_dat.Part_num,
-                //labelID = order_dat.LabelID,
-                //quantity = order_dat.Quantity,
             };
-            var result = await sqlConnection.ExecuteAsync(strSQL_LOG_up, param, sqlTransaction);
+            var controlID = await sqlConnection.QuerySingleAsync<long>(strSQL_LOG_Insert, param, sqlTransaction);
+            var superior_key1 = string.Format("{0:0000000000}", controlID);
+            var superior_key2 = controlID.ToString("D10");
+            var strSQL_UPDATE = @$"
+                                  UPDATE {order_table}
+                                  SET [superior_key] = @SuperiorKey
+                                  WHERE [controlID] = @ControlID;
+                                ";
+            var result = await sqlConnection.ExecuteAsync(strSQL_UPDATE, new
+            {
+                ControlID = controlID,
+                SuperiorKey = superior_key2
+            }, sqlTransaction);
+            // 上位キー更新
+            order_dat.superior_key = superior_key2;
             return result;
-
-            //using (var SQLTZN = new MSSQLAccess())
-            //{
-            //    SQLTZN.ClearParam();
-
-            //    SQLTZN.SetParam("@update_datetime", SqlDbType.NVarChar, order_dat.update_datetime);
-            //    SQLTZN.SetParam("@update_date", SqlDbType.NVarChar, order_dat.update_date);
-            //    SQLTZN.SetParam("@dataID", SqlDbType.NVarChar, order_dat.date_ID);
-            //    SQLTZN.SetParam("@superior_key", SqlDbType.NVarChar, order_dat.superior_key);
-            //    SQLTZN.SetParam("@related_sp_key", SqlDbType.NVarChar, order_dat.related_sp_key);
-            //    SQLTZN.SetParam("@order_type", SqlDbType.NVarChar, order_dat.order_type);
-            //    SQLTZN.SetParam("@order_detail", SqlDbType.NVarChar, order_dat.order_detail);
-            //    SQLTZN.SetParam("@catch_ST", SqlDbType.NVarChar, order_dat.catch_ST);
-            //    SQLTZN.SetParam("@catch_height", SqlDbType.NVarChar, order_dat.catch_height);
-            //    SQLTZN.SetParam("@release_ST", SqlDbType.NVarChar, order_dat.release_ST);
-            //    SQLTZN.SetParam("@release_height", SqlDbType.NVarChar, order_dat.release_height);
-            //    SQLTZN.SetParam("@priority_order", SqlDbType.NVarChar, order_dat.priority_order);
-            //    SQLTZN.SetParam("@machine_No", SqlDbType.NVarChar, order_dat.machine_No);
-
-            //    SQLTZN.SetParam("@part_num", SqlDbType.NVarChar, order_dat.Part_num);
-            //    SQLTZN.SetParam("@labelID", SqlDbType.NVarChar, order_dat.LabelID);
-            //    SQLTZN.SetParam("@quantity", SqlDbType.NVarChar, order_dat.Quantity);
-
-            //    string strSQL_LOG_up = "INSERT INTO " + order_table + " (update_datetime,update_date,dataID,superior_key,related_sp_key,order_type,order_detail, " + "catch_ST, catch_height,release_ST,release_height,priority_order,machine_No,part_num,labelID,quantity) VALUES (@update_datetime,@update_date,@dataID,@superior_key,@related_sp_key,@order_type,@order_detail, " + "@catch_ST,@catch_height,@release_ST,@release_height,@priority_order,@machine_No,@part_num,@labelID,@quantity) ";
-
-            //    SQLTZN.InsertData(strSQL_LOG_up);
-
-            //}
-
         }
 
 
