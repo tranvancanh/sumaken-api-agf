@@ -484,43 +484,40 @@ namespace AGF_operater
             }
             // ファイルオープン
             // ■成否確認
-            try
-            {
-                await LOG_write(order, sqlConnection, sqlTransaction);
-                string[] arry = order.make_arry();
+            
+            await LOG_write(order, sqlConnection, sqlTransaction);
+            string[] arry = order.make_arry();
 
-                // ■指定ファイルが見つからなかった場合一定回数トライしてだめだったらエラー
-                int vali_coun = 0;
-                const int try_count = 10;
-                while (vali_coun <= try_count)
+            // ■指定ファイルが見つからなかった場合一定回数トライしてだめだったらエラー
+            int vali_coun = 0;
+            const int try_count = 10;
+            while (vali_coun <= try_count)
+            {
+                try
                 {
-                    try
+                    using (var fileStream = new FileStream(ORDER_Path, FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.None))
                     {
-                        using (var fileStream = new FileStream(ORDER_Path, FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.None))
                         using (var sw = new StreamWriter(fileStream))
                         {
                             var lineText = string.Join(",", arry);
                             await sw.WriteLineAsync(lineText);
                         }
-                        break;
                     }
-                    catch
+                    break;
+                }
+                catch (Exception exception)
+                {
+                    vali_coun += 1;
+                    System.Threading.Thread.Sleep(500);
+                    if (vali_coun >= try_count)
                     {
-                        vali_coun += 1;
-                        System.Threading.Thread.Sleep(500);
-                        if (vali_coun >= try_count)
+                        if(exception is IOException)
                         {
-                            var ex = new FileNotFoundException();
-                            throw ex;
+                            throw new IOException("The process cannot access the file");
                         }
+                        throw;
                     }
                 }
-            }
-
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.Message);
-                throw;
             }
         }
 
