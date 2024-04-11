@@ -157,6 +157,7 @@ namespace sumaken_api_agf.Controllers.v1
                         WHERE [depo_code] = @DepoCode
                         AND ([lane_no] IN({strLanNo}))
                         AND ([sort_address] <> 0)
+                        AND [locking] = '0'
                         AND [state] = '0'
                         ORDER BY [sort_address]
                         ";
@@ -175,6 +176,7 @@ namespace sumaken_api_agf.Controllers.v1
                         FROM [W_AGF_LaneState]
                         WHERE [depo_code] = @DepoCode
                         AND ([lane_no] IN({strLanNo}))
+                        AND [locking] = '0'
                         AND [state] = '0'
                         ORDER BY [stacking_sort_address]
                         ";
