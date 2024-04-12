@@ -152,6 +152,7 @@ namespace sumaken_api_agf.Controllers.v1
                             [change_address] ChangeAddress,
                             [sort_address] AS SortAddress,
                             [stacking_sort_address] AS StackingSortAddress,
+                            [locking] AS [Locking],
                             [state] AS [State]
                         FROM [W_AGF_LaneState]
                         WHERE [depo_code] = @DepoCode
@@ -172,6 +173,7 @@ namespace sumaken_api_agf.Controllers.v1
                             [change_address] ChangeAddress,
                             [sort_address] AS SortAddress,
                             [stacking_sort_address] AS StackingSortAddress,
+                            [locking] AS [Locking],
                             [state] AS [State]
                         FROM [W_AGF_LaneState]
                         WHERE [depo_code] = @DepoCode
@@ -181,7 +183,10 @@ namespace sumaken_api_agf.Controllers.v1
                         ORDER BY [stacking_sort_address]
                         ";
             }
-
+            else
+            {
+                throw new Exception("セット方法は0または１です");
+            }
             var param = new
             {
                 DepoCode = depoCode
@@ -288,6 +293,7 @@ namespace sumaken_api_agf.Controllers.v1
                                             WHERE [depo_code] = @DepoCode
                                             AND [lane_no] = @LaneNo
                                             AND [lane_address] = @LaneAddress
+                                            AND [locking] = '0'
                                             AND [state] = '0'
                                             ";
                                 var param = new
@@ -320,6 +326,7 @@ namespace sumaken_api_agf.Controllers.v1
                                             WHERE [depo_code] = @DepoCode
                                             AND [lane_no] = @LaneNo
                                             AND [lane_address] = @LaneAddress
+                                            AND [locking] = '0'
                                             AND [state] = '0'
                                             ";
                                 var param1 = new
@@ -371,6 +378,10 @@ namespace sumaken_api_agf.Controllers.v1
                                     agfLaneState = item;
                                     break;
                                 }
+                            }
+                            else
+                            {
+                                throw new Exception("セット方法は0または１です");
                             }
                         }
 

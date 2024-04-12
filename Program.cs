@@ -6,7 +6,7 @@ using SakaguraAGFWebApi.Controllers;
 using sumaken_api_agf.Controllers.v1;
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
-logger.Info("init main");
+logger.Info("Init Program | Start Application");
 
 try
 {

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -36,9 +37,9 @@ namespace SakaguraAGFWebApi.Controllers.v1
             timer = new Timer(timerCallback, null, 60000, Timeout.Infinite);
 
             // Wait for user input to exit
-            Console.WriteLine("Press any key to exit...");
+            Debug.WriteLine("Press any key to exit...");
 
-            Console.WriteLine("Timer started. Waiting for 60 seconds...");
+            Debug.WriteLine("Timer started. Waiting for 60 seconds...");
 
             // Đảm bảo chương trình không kết thúc ngay lập tức
 
@@ -48,7 +49,7 @@ namespace SakaguraAGFWebApi.Controllers.v1
         static void DoSomething(object state)
         {
             // Method to be executed
-            Console.WriteLine("Executing DoSomething method...");
+            Debug.WriteLine("Executing DoSomething method...");
 
             // Dispose the timer to release resources when done
             timer.Dispose();

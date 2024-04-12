@@ -8,6 +8,7 @@
         public int ChangeAddress { get; set; }
         public int SortAddress { get; set; }
         public int StackingSortAddress { get; set; }
+        public int Locking { get; set; }
         public int State { get; set; }
     }
 }
