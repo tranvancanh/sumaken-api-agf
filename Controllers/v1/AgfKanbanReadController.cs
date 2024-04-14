@@ -7,7 +7,7 @@ using technoleight_THandy.Models;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
-namespace sumaken_api_agf.Controllers.v1
+namespace Sumaken_Api_Agf.Controllers.v1
 {
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]

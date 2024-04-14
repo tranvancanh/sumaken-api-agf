@@ -1,9 +1,12 @@
+using Hangfire;
+using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using NLog;
 using NLog.Web;
 using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Controllers;
-using sumaken_api_agf.Controllers.v1;
+using Sumaken_Api_Agf.Commons;
+using Sumaken_Api_Agf.Controllers.v1;
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
 logger.Info("Init Program | Start Application");
@@ -32,14 +35,26 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
+    // Add Hangfire services
+    builder.Services.AddHangfire(config =>
+    {
+        //config.UseNLogLogProvider(); // Use NLog for Hangfire logging
+        config.UseMemoryStorage(); // Use appropriate storage for production
+    });
+
+    // Add services to the container.
+    //builder.Services.AddSingleton<SchedulingTask>();
+
     // NLog: Setup NLog for Dependency injection
     builder.Logging.ClearProviders();
     builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+    builder.Logging.AddConsole();
     builder.Host.UseNLog();
 
     //other classes that need the logger 
     builder.Services.AddTransient<AgfCommonsController>();
     builder.Services.AddTransient<AgfLanenoReadController>();
+    builder.Services.AddSingleton<SchedulingTask>();
 
     var app = builder.Build();
 
@@ -63,7 +78,25 @@ try
         await next();
     });
 
-    //app.UseMiddleware<IOMiddleware>(); //’Ç‹L
+    // Configure Hangfire
+#pragma warning disable CS0618 // Type or member is obsolete
+    app.UseHangfireServer();
+#pragma warning restore CS0618 // Type or member is obsolete
+    app.UseHangfireDashboard();
+
+    // Enqueue a job to run immediately
+    BackgroundJob.Enqueue<SchedulingTask>(x => x.ExecuteImmediately());
+    // Schedule a recurring job / recurring jobs using job Id
+    RecurringJob.AddOrUpdate<SchedulingTask>("jobId2", (x) => x.ExecuteDailyAsync(), Cron.Daily()); // UTC time = Japan Time - 9
+
+    // Schedule a job to run after 5 min delay, delayed job
+    //BackgroundJob.Schedule<SchedulingTask>((x) => x.ExecuteAsync(), TimeSpan.FromMinutes(10));
+
+    // Schedule a recurring job / recurring jobs using job Id
+    //RecurringJob.AddOrUpdate<SchedulingTask>("jobId1", x => x.ExecuteMinutelyAsync(), Cron.Minutely);
+    //RecurringJob.AddOrUpdate<SchedulingTask>("jobId2", (x) => x.ExecuteDailyAsync(), Cron.Daily()); // UTC time = Japan Time - 9
+    //RecurringJob.AddOrUpdate<SchedulingTask>("jobId2", (x) => x.ExecuteDailyAsync(), Cron.Daily(07, 08)); // UTC time = Japan Time - 9
+    //RecurringJob.AddOrUpdate<SchedulingTask>("jobId3", x => x.ExecuteMonthlyAsync(), Cron.Monthly(13, 08, 10)); // UTC time = Japan Time - 9
 
     await app.RunAsync();
 
