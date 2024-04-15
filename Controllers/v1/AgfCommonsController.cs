@@ -22,35 +22,30 @@ namespace Sumaken_Api_Agf.Controllers.v1
             _logger.LogInformation("Nlog is started to AGF共通処理開始");
         }
 
-        // GET: api/<AgfCommonsController>
-        [HttpGet]
-        public IEnumerable<string> Get()
-        {
-            return new string[] { "value1", "value2" };
-        }
-
-        // GET api/<AgfCommonsController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
-        {
-            return "value";
-        }
-
         // POST api/<AgfCommonsController>
         [HttpPost()]
         [Route("ScanRecord/{companyID}")]
         public async Task<IActionResult> ScanRecord(int companyID, [FromBody] List<AGFScanRecordModel> scanRecords)
         {
-            var companys = CompanyModel.GetCompanyByCompanyID(companyID);
-            if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
-            var databaseName = companys[0].DatabaseName;
-            await SaveScanRecord(databaseName, scanRecords);
-            return Ok();
+            try
+            {
+                var companys = CompanyModel.GetCompanyByCompanyID(companyID);
+                if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+                var databaseName = companys[0].DatabaseName;
+                var agf_ScanRecordID = await SaveScanRecord(databaseName, scanRecords);
+                return Ok(agf_ScanRecordID);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("ScanRecordの保存が発生しました。");
+                _logger.LogError("Message   ：   " + ex.Message);
+                return StatusCode(500, ex.Message);
+            }
         }
 
-        private async Task<int> SaveScanRecord(string databaseName, List<AGFScanRecordModel> scanRecords)
+        private async Task<long> SaveScanRecord(string databaseName, List<AGFScanRecordModel> scanRecords)
         {
-            var affectedRows = 0;
+            var agf_ScanRecordID = 0L;
             var connectionString = new GetConnectString(databaseName).ConnectionString;
             using (var connection = new SqlConnection(connectionString))
             {
@@ -64,6 +59,7 @@ namespace Sumaken_Api_Agf.Controllers.v1
                             var query = @"
                             INSERT INTO [D_AGF_ScanRecord] 
                             ([DepoID],[HandyUserID],[HandyOperationClass],[HandyOperationMessage],[Device],[HandyPageID],[ScanString1],[ScanString2],[ScanString3],[ScanTime],[Latitude],[Longitude],[CreateDate])
+                             OUTPUT INSERTED.AGF_ScanRecordID
                             VALUES (@DepoID,@HandyUserID,@HandyOperationClass,@HandyOperationMessage,@Device,@HandyPageID,@ScanString1,@ScanString2,@ScanString3,@ScanTime,@Latitude,@Longitude,@CreateDate)
                             ;";
                             var param = new
@@ -82,8 +78,7 @@ namespace Sumaken_Api_Agf.Controllers.v1
                                 Longitude = item.Longitude,
                                 CreateDate = DateTime.Now
                             };
-                            var result = await connection.ExecuteAsync(query, param, tran);
-                            if(result > 0) { affectedRows =  affectedRows + result; }
+                            agf_ScanRecordID = await connection.QuerySingleAsync<long>(query, param, tran);
                         }
 
                         tran.Commit();
@@ -95,7 +90,69 @@ namespace Sumaken_Api_Agf.Controllers.v1
                     }
                 }
             }
-            return affectedRows;
+            return agf_ScanRecordID;
+        }
+
+        // POST api/<AgfCommonsController>
+        [HttpPost()]
+        [Route("UpdateScanRecordByID/{companyID}")]
+        public async Task<IActionResult> UpdateScanRecordByID(int companyID, AGFScanRecordModel scanRecordModel)
+        {
+            try
+            {
+                var companys = CompanyModel.GetCompanyByCompanyID(companyID);
+                if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+
+                var databaseName = companys[0].DatabaseName;
+                var agf_ScanRecordID = await UpdateScanRecord(databaseName, scanRecordModel);
+                return Ok(agf_ScanRecordID);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("ScanRecordの更新が発生しました。");
+                _logger.LogError("Message   ：   " + ex.Message);
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        private async Task<int> UpdateScanRecord (string databaseName, AGFScanRecordModel scanRecordModel)
+        {
+            var agfScanRecordID = scanRecordModel.AGF_ScanRecordID;
+            var handyOperationClass = scanRecordModel.HandyOperationClass; 
+            var handyOperationMessage = scanRecordModel.HandyOperationMessage;
+
+            var result = 0;
+            var connectionString = new GetConnectString(databaseName).ConnectionString;
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                using (var tran = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        var query = @"
+                                    UPDATE [D_AGF_ScanRecord]
+                                    SET HandyOperationClass = @HandyOperationClass, HandyOperationMessage = @HandyOperationMessage
+                                    WHERE [AGF_ScanRecordID] = @AGF_ScanRecordID
+                                    ";
+                        var param = new
+                        {
+                            AGF_ScanRecordID = agfScanRecordID,
+                            HandyOperationClass = handyOperationClass,
+                            HandyOperationMessage = handyOperationMessage
+                        };
+                        result = await connection.ExecuteAsync(query, param, tran);
+
+                        tran.Commit();
+                    }
+                    catch (Exception)
+                    {
+                        tran.Rollback();
+                        throw;
+                    }
+                }
+            }
+            return result;
         }
 
         [HttpGet()]
@@ -140,6 +197,5 @@ namespace Sumaken_Api_Agf.Controllers.v1
 
         }
 
-       
     }
 }
