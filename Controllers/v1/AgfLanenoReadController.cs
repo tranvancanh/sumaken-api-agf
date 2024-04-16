@@ -372,7 +372,8 @@ namespace Sumaken_Api_Agf.Controllers.v1
                                                 UpdateUserID = handyUserID
                                             };
                                             var updateRows2 = await connection.ExecuteAsync(SQL_UPDATE2, param2, transaction);
-                                            affectedRows = affectedRows + updateRows2;
+                                            if(updateRows2 > 0)
+                                                affectedRows = affectedRows + updateRows2;
                                         }
                                     }
                                     agfLaneState = item;

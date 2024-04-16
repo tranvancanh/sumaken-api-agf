@@ -431,7 +431,7 @@ namespace AGF_operater
             // 指示区分
             //order.order_type = order.order_type;
             // 指示詳細
-            string order_detail = "";
+            string order_detail = "0";
             order.order_detail = order_detail;
             // 荷取りST
             //order.catch_ST = order.catch_ST;
