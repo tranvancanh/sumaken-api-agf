@@ -185,7 +185,7 @@ namespace Sumaken_Api_Agf.Controllers.v1
             }
             else
             {
-                throw new Exception("セット方法は0または１です");
+                throw new Exception("出荷レーンQRを読んでください");
             }
             var param = new
             {
@@ -272,7 +272,7 @@ namespace Sumaken_Api_Agf.Controllers.v1
                         var agfStates = await this.GetLaneStateData(depoCode, settingFlag, laneNos, connection, transaction);
                         if (!agfStates.Any())
                         {
-                            throw new Exception("出荷レーンがいっぱいの場合もエラー");
+                            throw new Exception("出荷レーンが全て埋まっています");
                         }
                         AGFLaneStateModel agfLaneState = null;
                         //var change_Adress = 0;
@@ -398,13 +398,13 @@ namespace Sumaken_Api_Agf.Controllers.v1
                             }
                             else
                             {
-                                throw new Exception("セット方法は0または１です");
+                                throw new Exception("出荷レーンQRを読んでください");
                             }
                         }
 
                         if(agfLaneState == null)
                         {
-                            throw new Exception("出荷レーンがいっぱいの場合もエラー");
+                            throw new Exception("出荷レーンが全て埋まっています");
                         }
                         var createTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
                    
