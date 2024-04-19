@@ -279,12 +279,15 @@ namespace Sumaken_Api_Agf.Controllers.v1
                         for (var i = 0; i < agfStates.Count; i++)
                         {
                             var item = agfStates[i];
+                            var changeAddress = item.ChangeAddress;
                             var updateTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
 
                             //平積み
                             if (settingFlag.Equals("0"))
                             {
+                                var nextChangeAddress = changeAddress + 1;
                                 //stateは0なら1荷物ありを立てる。1がすでに立っている場合は次の番号に1を立てる
+                                //平積みの場合：上段に禁止＝２が入ります。
                                 var SQL_UPDATE = @$"
                                             UPDATE [W_AGF_LaneState]
                                             SET [state] = '1',
@@ -295,12 +298,25 @@ namespace Sumaken_Api_Agf.Controllers.v1
                                             AND [lane_address] = @LaneAddress
                                             AND [locking] = '0'
                                             AND [state] = '0'
-                                            ";
+                                            ;
+                                    --- 平積みの場合：上段に禁止＝２が入ります。
+                                            UPDATE [W_AGF_LaneState]
+                                            SET [state] = '2',
+                                                [update_date] = @UpdateTime,
+                                                [update_user_id] = @UpdateUserID
+                                            WHERE [depo_code] = @DepoCode
+                                            AND [lane_no] = @LaneNo
+                                            AND [change_address] = @NextChangeAddress
+                                            AND [locking] = '0'
+                                            AND [state] = '0'
+                                            ;
+                                      ";
                                 var param = new
                                 {
                                     DepoCode = item.DepoCode,
                                     LaneNo = item.LaneNo,
                                     LaneAddress = item.LaneAddress,
+                                    NextChangeAddress = nextChangeAddress,
                                     UpdateTime = updateTime,
                                     UpdateUserID = handyUserID
                                 };
