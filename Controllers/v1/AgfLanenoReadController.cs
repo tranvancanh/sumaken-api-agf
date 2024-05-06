@@ -292,7 +292,8 @@ namespace Sumaken_Api_Agf.Controllers.v1
                                             UPDATE [W_AGF_LaneState]
                                             SET [state] = '1',
                                                 [update_date] = @UpdateTime,
-                                                [update_user_id] = @UpdateUserID
+                                                [update_user_id] = @UpdateUserID,
+                                                [set_date] = @UpdateTime 
                                             WHERE [depo_code] = @DepoCode
                                             AND [lane_no] = @LaneNo
                                             AND [lane_address] = @LaneAddress
@@ -376,7 +377,8 @@ namespace Sumaken_Api_Agf.Controllers.v1
                                                                 UPDATE [W_AGF_LaneState]
                                                                 SET [state] = '2',
                                                                     [update_date] = @UpdateTime,
-                                                                    [update_user_id] = @UpdateUserID
+                                                                    [update_user_id] = @UpdateUserID,
+                                                                    [set_date] = @UpdateTime 
                                                                 WHERE [depo_code] = @DepoCode
                                                                 AND [lane_no] = @LaneNo
                                                                 AND [lane_address] = @LaneAddress
