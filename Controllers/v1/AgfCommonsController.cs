@@ -43,6 +43,49 @@ namespace Sumaken_Api_Agf.Controllers.v1
             }
         }
 
+        [HttpGet()]
+        [Route("CurrentPosition/{companyID}")]
+        public async Task<IActionResult> CurrentPosition(int companyID, string id, string latitude, string longitude)
+        {
+            var companys = CompanyModel.GetCompanyByCompanyID(companyID);
+            if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+            var databaseName = companys[0].DatabaseName;
+
+            var result = 0;
+            var connectionString = new GetConnectString(databaseName).ConnectionString;
+            using (var connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                using (var tran = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        var query = @"
+                        INSERT INTO [CurrentPosition] 
+                                ([UUID], [Latitude],[Longitude],[DateTime])
+                        VALUES (@UUID, @Latitude, @Longitude, @DateTime)
+                        ;";
+                        var param = new
+                        {
+                            UUID = id,
+                            Latitude = latitude,
+                            Longitude = longitude,
+                            DateTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss")
+                        };
+                        result  = await connection.ExecuteAsync(query, param, tran);
+
+                        tran.Commit();
+                    }
+                    catch (Exception)
+                    {
+                        tran.Rollback();
+                        throw;
+                    }
+                }
+            }
+            return Ok(result);
+        }
+
         private async Task<long> SaveScanRecord(string databaseName, List<AGFScanRecordModel> scanRecords)
         {
             var agf_ScanRecordID = 0L;

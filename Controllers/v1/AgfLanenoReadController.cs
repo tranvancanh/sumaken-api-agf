@@ -6,6 +6,7 @@ using SakaguraAGFWebApi.Commons;
 using SakaguraAGFWebApi.Models;
 using sumaken_api_agf.Commons;
 using sumaken_api_agf.Models;
+using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
@@ -116,25 +117,100 @@ namespace Sumaken_Api_Agf.Controllers.v1
         [Route("GetLaneState/{companyID}")]
         public async Task<IActionResult> GetLaneState(int companyID, int depoCode, string settingFlag, string laneNo)
         {
+            try
+            {
+                var companys = CompanyModel.GetCompanyByCompanyID(companyID);
+                if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
+                var databaseName = companys[0].DatabaseName;
+
+                var laneStateDatas = new List<AGFLaneStateModel>();
+                var connectionString = new GetConnectString(databaseName).ConnectionString;
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    var laneNoList = JsonConvert.DeserializeObject<List<string>>(laneNo);
+                    var laneNoListAfter = laneNoList.Where(x => string.IsNullOrWhiteSpace(x) != true).ToList();
+                    laneStateDatas = await this.GetLaneStateData(depoCode, settingFlag, laneNoListAfter, connection);
+
+                    if (!laneStateDatas.Any())
+                        return StatusCode(404, "出荷レーンが全て埋まっています");
+
+                    var twoHoursAgo = DateTime.Now.AddHours(-2);
+                    foreach (var lane in laneNoListAfter)
+                    {
+                        var result = await GetLastUpdate(depoCode, lane, twoHoursAgo, connection);
+                        if (result)
+                            return StatusCode(501, laneStateDatas.First());
+                    }
+                }
+                return Ok(laneStateDatas.First());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("GetLaneState処理は異常終了");
+                _logger.LogError("Message   ：   " + ex.Message);
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+
+        private async Task<bool> GetLastUpdate(int depoCode, string laneNo, DateTime twoHoursAgo, SqlConnection sqlConnection)
+        {
+            var query = @$"
+                        select count(*)
+                        from [W_AGF_LaneState]
+                        where (lane_no = @LaneNo) 
+                        AND (set_date<> '1900/01/01') 
+                        AND (@TwoHoursAgo >= (SELECT MAX(set_date) FROM W_AGF_LaneState WHERE lane_no=@LaneNo))
+                        ";
+
+            var laneStateDatas = (int)(await sqlConnection.ExecuteScalarAsync(query, new
+            {
+                LaneNo = laneNo,
+                TwoHoursAgo = twoHoursAgo
+            }));
+            return laneStateDatas > 0;
+        }
+
+        [HttpGet]
+        [Route("GetShukaLaneName/{companyID}")]
+        public async Task<IActionResult> GetShukaLaneName(int companyID, int depoCode)
+        {
             var companys = CompanyModel.GetCompanyByCompanyID(companyID);
             if (companys.Count != 1) return Responce.ExNotFound("データベースの取得に失敗しました");
             var databaseName = companys[0].DatabaseName;
 
-            var laneStateDatas = new List<AGFLaneStateModel>();
+            var lsitAGFShukaLaneName = new List<AGFShukaLaneNameModel>();
             var connectionString = new GetConnectString(databaseName).ConnectionString;
             using (var connection = new SqlConnection(connectionString))
             {
                 connection.Open();
 
-                var laneNoList = JsonConvert.DeserializeObject<List<string>>(laneNo);
-                var laneNoListAfter = laneNoList.Where(x => string.IsNullOrWhiteSpace(x) != true).ToList();
-                laneStateDatas = await this.GetLaneStateData(depoCode, settingFlag, laneNoListAfter, connection);
+                var query = @"
+                              SELECT 
+                                   B.lane_no AS LaneNo
+                                  ,B.truck_bin_code AS TruckBinCode
+                                  ,C.truck_bin_name AS TruckBinName
+                                  ,A.depo_code AS DepoCode
+                                  ,A.lane_group_id AS LaneGroupId
+                                  ,A.lane_group_name AS LaneGroupName
+                              FROM [M_AGF_LaneGroup] AS A
+                              left outer join [M_AGF_TruckBinLane] AS B ON A.lane_group_id=B.lane_group_id
+                              left outer join [M_AGF_TruckBin] AS C ON B.truck_bin_code=C.truck_bin_code
+                              WHERE A.depo_code = @DepoCode
+                              order by B.lane_no
+                            ";
+                var param = new
+                {
+                    DepoCode = depoCode
+                };
+                lsitAGFShukaLaneName = (await connection.QueryAsync<AGFShukaLaneNameModel>(query, param)).ToList();
 
-                if (!laneStateDatas.Any())
+                if (!lsitAGFShukaLaneName.Any())
                     return NotFound();
             }
-            return Ok(laneStateDatas.First());
-
+            return Ok(lsitAGFShukaLaneName);
         }
 
         private async Task<List<AGFLaneStateModel>> GetLaneStateData(int depoCode, string settingFlag, List<string> laneNo, SqlConnection sqlConnection = null, SqlTransaction sqlTransaction = null)
@@ -193,6 +269,41 @@ namespace Sumaken_Api_Agf.Controllers.v1
             };
             laneStateDatas = (await sqlConnection.QueryAsync<AGFLaneStateModel>(query, param, sqlTransaction)).ToList();
           
+            return laneStateDatas;
+        }
+
+        private async Task<List<AGFLaneStateModel>> GetAllBeforeState(AGFLaneStateModel aGFLaneState, SqlConnection sqlConnection = null, SqlTransaction sqlTransaction = null)
+        {
+            var laneStateDatas = new List<AGFLaneStateModel>();
+            var query = string.Empty;
+            
+                query = @$"
+                        SELECT
+                            [depo_code] AS DepoCode,
+                            [lane_no] AS LaneNo,
+                            [lane_address] AS LaneAddress,
+                            [change_address] ChangeAddress,
+                            [sort_address] AS SortAddress,
+                            [stacking_sort_address] AS StackingSortAddress,
+                            [locking] AS [Locking],
+                            [state] AS [State]
+                        FROM [W_AGF_LaneState]
+                        WHERE [depo_code] = @DepoCode
+                        AND ([lane_no] = @LaneNo)
+                        AND [locking] = '0'
+                        AND [state] = '0'
+                        AND [stacking_sort_address] < (SELECT [stacking_sort_address] FROM W_AGF_LaneState WHERE [depo_code] = @DepoCode AND [lane_no] = @LaneNo AND [lane_address] = @LaneAddress)
+                        ORDER BY [stacking_sort_address]
+                        ";
+           
+            var param = new
+            {
+                DepoCode = aGFLaneState.DepoCode,
+                LaneNo = aGFLaneState.LaneNo,
+                LaneAddress = aGFLaneState.LaneAddress
+            };
+            laneStateDatas = (await sqlConnection.QueryAsync<AGFLaneStateModel>(query, param, sqlTransaction)).ToList();
+
             return laneStateDatas;
         }
 
@@ -411,7 +522,40 @@ namespace Sumaken_Api_Agf.Controllers.v1
                             throw new Exception("出荷レーンが全て埋まっています");
                         }
                         var createTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
-                   
+
+                        // 平積み
+                        // 2段済み指示で1段目に置いて、次が平積み指示だと前の2段目のデータが0で残ってしまう。 ー＞禁止＝２が入ります。
+                        if (settingFlag.Equals("0"))
+                        {
+                            // 以前の状態を確認、お荷物はまだ置かないの場合：禁止＝２が入ります。
+                            var remainState = await GetAllBeforeState(agfLaneState, connection, transaction);
+                            var updt = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+                            foreach (var state in remainState)
+                            {
+                                var SQL_UPDATE3 = @$"
+                                                UPDATE [W_AGF_LaneState]
+                                                SET [state] = '2',
+                                                    [update_date] = @UpdateTime,
+                                                    [update_user_id] = @UpdateUserID,
+                                                    [set_date] = @UpdateTime 
+                                                WHERE [depo_code] = @DepoCode
+                                                AND [lane_no] = @LaneNo
+                                                AND [lane_address] = @LaneAddress
+                                                ";
+                                var param3 = new
+                                {
+                                    DepoCode = state.DepoCode,
+                                    LaneNo = state.LaneNo,
+                                    LaneAddress = state.LaneAddress,
+                                    UpdateTime = updt,
+                                    UpdateUserID = handyUserID
+                                };
+                                var updateRows3 = await connection.ExecuteAsync(SQL_UPDATE3, param3, transaction);
+                                if (updateRows3 > 0)
+                                    affectedRows = affectedRows + updateRows3;
+                            }
+                        }
+
                         //行先名称を存在するチェック
                         var SQL_SELECT_DESTINATION = @$"
                                                         SELECT A.destination
