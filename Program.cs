@@ -88,18 +88,10 @@ try
     BackgroundJob.Enqueue<SchedulingTask>(x => x.ExecuteImmediately());
     // Schedule a recurring job / recurring jobs using job Id
     RecurringJob.AddOrUpdate<SchedulingTask>("jobId2", (x) => x.ExecuteDailyAsync(), Cron.Daily()); // UTC time = Japan Time - 9
-
     // Schedule a job to run after 5 min delay, delayed job
     //BackgroundJob.Schedule<SchedulingTask>((x) => x.ExecuteAsync(), TimeSpan.FromMinutes(10));
 
-    // Schedule a recurring job / recurring jobs using job Id
-    //RecurringJob.AddOrUpdate<SchedulingTask>("jobId1", x => x.ExecuteMinutelyAsync(), Cron.Minutely);
-    //RecurringJob.AddOrUpdate<SchedulingTask>("jobId2", (x) => x.ExecuteDailyAsync(), Cron.Daily()); // UTC time = Japan Time - 9
-    //RecurringJob.AddOrUpdate<SchedulingTask>("jobId2", (x) => x.ExecuteDailyAsync(), Cron.Daily(07, 08)); // UTC time = Japan Time - 9
-    //RecurringJob.AddOrUpdate<SchedulingTask>("jobId3", x => x.ExecuteMonthlyAsync(), Cron.Monthly(13, 08, 10)); // UTC time = Japan Time - 9
-
     await app.RunAsync();
-
 }
 catch (Exception exception)
 {
