@@ -136,6 +136,7 @@ namespace Sumaken_Api_Agf.Controllers.v1
                     if (!laneStateDatas.Any())
                         return StatusCode(404, "出荷レーンが全て埋まっています");
 
+                    //・前回指示時間より2時間を超えていて且つ該当レーンに予約が残っていた場合にワーニング表示する
                     var twoHoursAgo = DateTime.Now.AddHours(-2);
                     foreach (var lane in laneNoListAfter)
                     {
@@ -521,8 +522,8 @@ namespace Sumaken_Api_Agf.Controllers.v1
                         {
                             throw new Exception("出荷レーンが全て埋まっています");
                         }
-                        var createTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
 
+                        var createTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
                         // 平積み
                         // 2段済み指示で1段目に置いて、次が平積み指示だと前の2段目のデータが0で残ってしまう。 ー＞禁止＝２が入ります。
                         if (settingFlag.Equals("0"))
