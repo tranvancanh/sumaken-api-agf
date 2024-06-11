@@ -49,6 +49,7 @@ namespace Sumaken_Api_Agf.Commons
                             if (fLastTime < dtCreateLimit)
                             {
                                 file.Delete();
+                                _logger.LogInformation($"File {file.Name} is deleted!!");
                             }
                         }
                         catch (Exception ex)
@@ -103,6 +104,7 @@ namespace Sumaken_Api_Agf.Commons
                             if (fLastTime < dtCreateLimit)
                             {
                                 file.Delete();
+                                _logger.LogInformation($"File {file.Name} is deleted!!");
                             }
                         }
                         catch (Exception ex)
@@ -155,6 +157,7 @@ namespace Sumaken_Api_Agf.Commons
                             if (fLastTime < dtCreateLimit)
                             {
                                 file.Delete();
+                                _logger.LogInformation($"File {file.Name} is deleted!!");
                             }
                         }
                         catch (Exception ex)
@@ -208,6 +211,7 @@ namespace Sumaken_Api_Agf.Commons
                             if (fLastTime < dtCreateLimit)
                             {
                                 file.Delete();
+                                _logger.LogInformation($"File {file.Name} is deleted!!");
                             }
                         }
                         catch (Exception ex)
