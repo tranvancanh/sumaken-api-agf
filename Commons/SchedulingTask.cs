@@ -6,7 +6,7 @@ namespace Sumaken_Api_Agf.Commons
 {
     public class SchedulingTask
     {
-        private int MostRecentDays = 6;
+        private int MostRecentDays = 365;
 
         private readonly ILogger<SchedulingTask> _logger;
         public SchedulingTask(ILogger<SchedulingTask> logger)
